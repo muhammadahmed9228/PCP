@@ -1,0 +1,16 @@
+import api from "../../../services/api";
+
+export const ampService = {
+  getAMP: async (areaId) => {
+    const response = await api.get(`/amp/area/${areaId}`);
+    return response.data;
+  },
+  saveDraft: async (areaId, ampData) => {
+    const response = await api.post(`/amp/area/${areaId}`, ampData);
+    return response.data;
+  },
+  finalizeAMP: async (areaId) => {
+    const response = await api.patch(`/amp/area/${areaId}/finalize`);
+    return response.data;
+  }
+};

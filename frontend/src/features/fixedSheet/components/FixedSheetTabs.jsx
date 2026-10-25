@@ -1,0 +1,136 @@
+import React from "react";
+import { useFormContext, useFieldArray, useWatch } from "react-hook-form";
+
+// --- TAB 1: VACCINATION ---
+export const TabVaccinated = () => {
+  const { register, control } = useFormContext();
+  const { fields, append, remove } = useFieldArray({ control, name: "vaccinatedChildren" });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center border-b pb-2 mb-4">
+        <h3 className="text-lg font-semibold">Section 5: Vaccination Details</h3>
+        <button type="button" onClick={() => append({})} className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700 disabled:opacity-50" disabled={fields.length >= 60}>
+          + Add Vaccinated Child ({fields.length}/60)
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm border">
+          <thead className="bg-blue-50">
+            <tr>
+              <th className="p-2 border">Sr</th>
+              <th className="p-2 border">Child Name</th>
+              <th className="p-2 border">Age</th>
+              <th className="p-2 border">Father Name</th>
+              <th className="p-2 border">Address</th>
+              <th className="p-2 border">X</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fields.map((field, index) => (
+              <tr key={field.id} className="text-center">
+                <td className="p-2 border">{index + 1}</td>
+                <td className="p-2 border"><input {...register(`vaccinatedChildren.${index}.childName`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`vaccinatedChildren.${index}.age`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`vaccinatedChildren.${index}.fatherName`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`vaccinatedChildren.${index}.address`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><button type="button" onClick={() => remove(index)} className="text-red-500 font-bold">&times;</button></td>
+              </tr>
+            ))}
+            {fields.length === 0 && <tr><td colSpan="6" className="p-4 text-gray-500">No children vaccinated yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// --- TAB 2: MEDICAL & AFP ---
+export const TabMedical = () => {
+  const { register, control } = useFormContext();
+  const { fields: unvaccFields, append: appendUnvacc, remove: removeUnvacc } = useFieldArray({ control, name: "unvaccinatedChildren" });
+  const { fields: wpFields, append: appendWp, remove: removeWp } = useFieldArray({ control, name: "weaknessParalysis" });
+
+  return (
+    <div className="space-y-8">
+      {/* SECTION 6 */}
+      <div className="bg-gray-50 p-4 rounded border">
+        <h3 className="font-semibold mb-2">Section 6: AFP & Zero Dose</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className="block text-sm">Total AFP Cases Noticed</label><input type="number" {...register("afpCasesNoticed")} className="mt-1 w-full px-3 py-2 border rounded" /></div>
+          <div><label className="block text-sm">Total Zero Dose for RI</label><input type="number" {...register("zeroDoseRIRecorded")} className="mt-1 w-full px-3 py-2 border rounded" /></div>
+        </div>
+      </div>
+
+      {/* SECTION 7 */}
+      <div>
+        <div className="flex justify-between items-center border-b pb-2 mb-4">
+          <h3 className="text-lg font-semibold text-red-700">Section 7: Unvaccinated Children</h3>
+          <button type="button" onClick={() => appendUnvacc({})} className="bg-red-600 text-white px-3 py-1 text-sm rounded hover:bg-red-700" disabled={unvaccFields.length >= 5}>
+            + Add Unvaccinated ({unvaccFields.length}/5)
+          </button>
+        </div>
+        <table className="min-w-full text-sm border">
+          <thead className="bg-red-50">
+            <tr>
+              <th className="p-2 border">Child Name</th>
+              <th className="p-2 border">Father Name</th>
+              <th className="p-2 border">Age</th>
+              <th className="p-2 border">Address</th>
+              <th className="p-2 border">Phone No</th>
+              <th className="p-2 border">X</th>
+            </tr>
+          </thead>
+          <tbody>
+            {unvaccFields.map((field, idx) => (
+              <tr key={field.id}>
+                <td className="p-2 border"><input {...register(`unvaccinatedChildren.${idx}.childName`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`unvaccinatedChildren.${idx}.fatherName`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`unvaccinatedChildren.${idx}.age`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`unvaccinatedChildren.${idx}.address`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`unvaccinatedChildren.${idx}.phoneNo`)} className="w-full px-1 border" /></td>
+                <td className="p-2 border text-center"><button type="button" onClick={() => removeUnvacc(idx)} className="text-red-500">&times;</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* SECTION 8 */}
+      <div>
+        <div className="flex justify-between items-center border-b pb-2 mb-4">
+          <h3 className="text-lg font-semibold text-purple-700">Section 8: Weakness / Paralysis (&lt; 15 Years)</h3>
+          <button type="button" onClick={() => appendWp({})} className="bg-purple-600 text-white px-3 py-1 text-sm rounded" disabled={wpFields.length >= 5}>
+            + Add Case ({wpFields.length}/5)
+          </button>
+        </div>
+        <table className="min-w-full text-sm border">
+          <thead className="bg-purple-50">
+            <tr>
+              <th className="p-2 border">Child Name</th>
+              <th className="p-2 border">Father Name</th>
+              <th className="p-2 border">Age</th>
+              <th className="p-2 border">Date Diagnosed</th>
+              <th className="p-2 border">Address</th>
+              <th className="p-2 border">Phone No</th>
+              <th className="p-2 border">X</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wpFields.map((field, idx) => (
+              <tr key={field.id}>
+                <td className="p-2 border"><input {...register(`weaknessParalysis.${idx}.childName`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`weaknessParalysis.${idx}.fatherName`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`weaknessParalysis.${idx}.age`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input type="date" {...register(`weaknessParalysis.${idx}.dateDiagnosed`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`weaknessParalysis.${idx}.address`)} className="w-full px-1 border" required /></td>
+                <td className="p-2 border"><input {...register(`weaknessParalysis.${idx}.phoneNo`)} className="w-full px-1 border" /></td>
+                <td className="p-2 border text-center"><button type="button" onClick={() => removeWp(idx)} className="text-red-500">&times;</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
