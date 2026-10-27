@@ -32,11 +32,13 @@ export const verifyCampaignReadiness = async (campaignId, uciId) => {
         report.errors.push("No areas have been created for this campaign.");
     } else {
         const areaIds = areas.map(a => a._id);
-        const amps = await AMP.find({ area: { $in: areaIds }, status: "Finalized" });
-        if (amps.length === areas.length) {
+        const amps = await AMP.find({ campaign: campaignId, uci: uciId, area: { $in: areaIds }, status: "Approved" });
+        const approvedByArea = new Map(amps.map(amp => [String(amp.area), amp]));
+        const approvedCount = areas.filter(area => String(approvedByArea.get(String(area._id))?.aic) === String(area.aic)).length;
+        if (approvedCount === areas.length) {
             report.ampsReady = true;
         } else {
-            report.errors.push(`Only \({amps.length} of\){areas.length} Areas have finalized AMPs.`);
+            report.errors.push(`Only ${approvedCount} of ${areas.length} Areas have approved AMPs.`);
         }
     }
 

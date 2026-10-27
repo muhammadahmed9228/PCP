@@ -1,20 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useState } from "react";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { fetchCampaigns, createNewCampaign, editCampaign, removeCampaign } from "../store/campaignSlice";
+import { createNewCampaign, editCampaign, removeCampaign, completeCampaign } from "../store/campaignSlice";
+import { campaignService } from "../services/campaign.service";
+import { useServerList } from "../../../components/shared/useServerList";
+import ServerListControls from "../../../components/shared/ServerListControls";
+import { bootstrapContext } from "../../context/store/contextSlice";
 import { createCampaignSchema } from "../validations/campaign.schema";
 import Modal from "../../../components/shared/Modal";
+import { useTranslation } from "react-i18next";
+import "../../../i18n/i18n";
 
 const CampaignListPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { campaigns, loading } = useSelector((state) => state.campaigns);
+  const { t } = useTranslation();
+  const [query, setQuery] = useState({ page: 1, limit: 10, search: "", status: "current", sort: "createdAt", order: "desc" });
+  const { items: currentCampaigns, total, loading, error, refresh } = useServerList(campaignService.listCampaigns, query);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   // Form for creating campaign
@@ -38,15 +47,14 @@ const CampaignListPage = () => {
     resolver: zodResolver(createCampaignSchema),
   });
 
-  useEffect(() => {
-    dispatch(fetchCampaigns());
-  }, [dispatch]);
-
   const onCreateSubmit = async (data) => {
     const resultAction = await dispatch(createNewCampaign(data));
     if (createNewCampaign.fulfilled.match(resultAction)) {
       setIsCreateModalOpen(false);
       resetCreate();
+      setQuery(current => ({ ...current, page: 1 }));
+      refresh();
+      dispatch(bootstrapContext());
     }
   };
 
@@ -60,6 +68,11 @@ const CampaignListPage = () => {
     setIsEditModalOpen(true);
   };
 
+  const handleViewClick = (campaign) => {
+    setSelectedCampaign(campaign);
+    setIsViewModalOpen(true);
+  };
+
   const onEditSubmit = async (data) => {
     if (!selectedCampaign) return;
     const resultAction = await dispatch(editCampaign({ id: selectedCampaign._id, campaignData: data }));
@@ -69,6 +82,8 @@ const CampaignListPage = () => {
       if (selectedCampaign._id === selectedCampaign?._id) {
         setSelectedCampaign(resultAction.payload);
       }
+      refresh();
+      dispatch(bootstrapContext());
     }
   };
 
@@ -80,17 +95,19 @@ const CampaignListPage = () => {
 
     const confirmMsg = `Are you sure you want to delete "${campaign.campaignName}"?\n\nThis will permanently remove the campaign and all of its assigned areas.`;
     if (window.confirm(confirmMsg)) {
-      await dispatch(removeCampaign(campaign._id));
-      if (selectedCampaign?._id === campaign._id) {
+      const resultAction = await dispatch(removeCampaign(campaign._id));
+      if (removeCampaign.fulfilled.match(resultAction)) { refresh(); dispatch(bootstrapContext()); }
+      if (removeCampaign.fulfilled.match(resultAction) && selectedCampaign?._id === campaign._id) {
         setIsManageModalOpen(false);
         setSelectedCampaign(null);
       }
     }
   };
 
-  const handleManageClick = (campaign) => {
-    setSelectedCampaign(campaign);
-    setIsManageModalOpen(true);
+  const handleCompleteClick = async (campaign) => {
+    if (!window.confirm(`Complete and archive "${campaign.campaignName}"? It will become read-only and move to Campaign History.`)) return;
+    const resultAction = await dispatch(completeCampaign(campaign._id));
+    if (completeCampaign.fulfilled.match(resultAction)) { refresh(); dispatch(bootstrapContext()); }
   };
 
   const getStatusBadge = (status) => {
@@ -109,9 +126,9 @@ const CampaignListPage = () => {
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Campaigns</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{t("campaigns")}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Manage your union council immunization campaigns, assigned personnel, areas, and lifecycle.
+            {t("campaignsDescription")}
           </p>
         </div>
         <button
@@ -119,25 +136,34 @@ const CampaignListPage = () => {
           className="bg-blue-600 text-white px-4 py-2.5 rounded-md shadow hover:bg-blue-700 font-medium text-sm flex items-center gap-2 transition"
         >
           <span className="text-lg leading-none">+</span> New Campaign
-        </button>
+          </button>
       </div>
 
-      {loading && campaigns.length === 0 ? (
-        <p className="text-gray-500 p-4">Loading campaigns...</p>
+      <ServerListControls query={query} setQuery={setQuery} total={total} loading={loading} label="campaigns"
+        filters={[{ key: "status", label: "Status", options: [
+          { value: "current", label: "Current (exclude completed)" }, { value: "all", label: "All statuses" },
+          ...["Planning", "Active", "Paused", "Cancelled", "Completed"].map(value => ({ value, label: value }))
+        ] }]}
+        sorts={[{ value: "createdAt", label: "Created" }, { value: "campaignName", label: "Campaign name" },
+          { value: "nameOfSIA", label: "SIA" }, { value: "startDate", label: "Start date" },
+          { value: "endDate", label: "End date" }, { value: "status", label: "Status" }]} />
+      {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {loading && currentCampaigns.length === 0 ? (
+        <p className="text-gray-500 p-4">{t("loadingCampaigns")}</p>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="max-w-full overflow-x-auto rounded-lg border border-gray-200 bg-white shadow" role="region" aria-label="Campaigns table" tabIndex={0}>
+          <table className="min-w-[1100px] w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Campaign Name</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SIA</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dates</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("campaignName")}</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("sia")}</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("dates")}</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("status")}</th>
+                <th className="min-w-52 bg-gray-50 px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider lg:sticky lg:right-0 lg:shadow-[-8px_0_12px_-10px_#64748b]">{t("actions")}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {campaigns.map((campaign) => (
+              {currentCampaigns.map((campaign) => (
                 <tr key={campaign._id} className="hover:bg-gray-50/60 transition">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-semibold text-gray-900">{campaign.campaignName}</div>
@@ -152,14 +178,13 @@ const CampaignListPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={getStatusBadge(campaign.status)}>{campaign.status}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    {/* Primary Manage Button */}
+                  <td className="min-w-52 bg-gray-100 px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 lg:sticky lg:right-0 lg:shadow-[-8px_0_12px_-10px_#64748b]">
                     <button
-                      onClick={() => handleManageClick(campaign)}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md font-semibold text-xs border border-blue-200 transition"
-                      title="Open Campaign Management Hub"
+                      onClick={() => handleViewClick(campaign)}
+                      className="px-2.5 py-1.5 text-blue-700 hover:text-blue-900 hover:bg-blue-50 rounded-md text-xs font-medium transition"
+                      title="View Campaign details"
                     >
-                      Manage
+                      View
                     </button>
                     {/* Quick Edit */}
                     <button
@@ -168,7 +193,7 @@ const CampaignListPage = () => {
                       className="px-2.5 py-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md text-xs font-medium transition disabled:opacity-40"
                       title="Edit Campaign"
                     >
-                      Edit
+                      {t("edit")}
                     </button>
                     {/* Quick Delete */}
                     <button
@@ -177,15 +202,24 @@ const CampaignListPage = () => {
                       className="px-2.5 py-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md text-xs font-medium transition disabled:opacity-40"
                       title="Delete Campaign"
                     >
-                      Delete
+                      {t("delete")}
                     </button>
+                    {campaign.status === "Active" && (
+                      <button
+                        onClick={() => handleCompleteClick(campaign)}
+                        className="px-2.5 py-1.5 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-md text-xs font-medium transition"
+                        title="Complete and archive campaign"
+                      >
+                        {t("complete")}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
-              {campaigns.length === 0 && (
+              {currentCampaigns.length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500">
-                    No campaigns found. Click <strong>+ New Campaign</strong> above to start planning.
+                    {t("noCampaignsFound")}
                   </td>
                 </tr>
               )}
@@ -306,6 +340,32 @@ const CampaignListPage = () => {
               >
                 🗑️ Delete Campaign
               </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Read-only Campaign Details Modal */}
+      {selectedCampaign && (
+        <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`View Campaign: ${selectedCampaign.campaignName}`}>
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4 border border-gray-200">
+              <span className="font-semibold text-gray-700">Status</span>
+              <span className={getStatusBadge(selectedCampaign.status)}>{selectedCampaign.status}</span>
+            </div>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Campaign Name</dt><dd className="mt-1 text-gray-900">{selectedCampaign.campaignName || "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Name of SIA</dt><dd className="mt-1 text-gray-900">{selectedCampaign.nameOfSIA || "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Start Date</dt><dd className="mt-1 text-gray-900">{selectedCampaign.startDate ? new Date(selectedCampaign.startDate).toLocaleDateString() : "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">End Date</dt><dd className="mt-1 text-gray-900">{selectedCampaign.endDate ? new Date(selectedCampaign.endDate).toLocaleDateString() : "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Assigned AICs</dt><dd className="mt-1 text-gray-900">{selectedCampaign.aics?.length || 0}</dd></div>
+            </dl>
+            <div>
+              <dt className="text-xs font-semibold uppercase text-gray-500">Description</dt>
+              <dd className="mt-1 rounded-md border border-gray-200 bg-white p-3 text-gray-700 whitespace-pre-wrap">{selectedCampaign.campaignDescription || "No description provided."}</dd>
+            </div>
+            <div className="flex justify-end border-t pt-4">
+              <button type="button" onClick={() => setIsViewModalOpen(false)} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-sm">Close</button>
             </div>
           </div>
         </Modal>

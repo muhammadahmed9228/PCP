@@ -1,6 +1,7 @@
-import React from "react";
+import { useTranslation } from "react-i18next";
 
 const OmpSnapshot = ({ data }) => {
+  const { t } = useTranslation();
   if (!data) return null;
 
   const leader = data.teamLeader || {};
@@ -12,17 +13,17 @@ const OmpSnapshot = ({ data }) => {
         {/* Section 0: Operational & Area Snapshot */}
         <div className="bg-gray-50 p-4 border rounded shadow-sm space-y-3">
           <h4 className="font-semibold text-gray-800 border-b pb-2">
-            Section 0: Campaign, Area & Route Details
+            {t("ompSnapshotSection0")}
           </h4>
           <ul className="text-sm space-y-2 text-gray-700">
-            <li><strong>Campaign:</strong> {data.campaignName || "N/A"}</li>
-            <li><strong>SIA Name:</strong> {data.sia || "N/A"}</li>
-            <li><strong>Day:</strong> Day {data.campaignDay || "N/A"}</li>
-            <li className="pt-1 border-t"><strong>District / Tehsil:</strong> {data.district || "N/A"} / {data.tehsil || "N/A"}</li>
-            <li><strong>UC:</strong> {data.ucName || "N/A"} ({data.ucNumber || "N/A"})</li>
-            <li><strong>Area:</strong> {data.areaName || "N/A"} ({data.areaNo || "N/A"})</li>
+            <li><strong>{t("campaign")}:</strong> {data.campaignName || t("notAvailableShort")}</li>
+            <li><strong>{t("teamSiaName")}:</strong> {data.sia || t("notAvailableShort")}</li>
+            <li><strong>{t("day")}:</strong> {data.campaignDay ? t("geoDay", { day: data.campaignDay }) : t("notAvailableShort")}</li>
+            <li className="pt-1 border-t"><strong>{t("districtTehsil")}:</strong> {data.district || t("notAvailableShort")} / {data.tehsil || t("notAvailableShort")}</li>
+            <li><strong>{t("uc")}:</strong> {data.ucName || t("notAvailableShort")} ({data.ucNumber || t("notAvailableShort")})</li>
+            <li><strong>{t("area")}:</strong> {data.areaName || t("notAvailableShort")} ({data.areaNo || t("notAvailableShort")})</li>
             <li className="pt-1 border-t text-blue-900 font-medium">
-              <strong>Assigned Route:</strong> Route {data.routeNo || "N/A"} — {data.routeName || "N/A"}
+              <strong>{t("assignedRoute")}:</strong> {t("route")} {data.routeNo || t("notAvailableShort")} — {data.routeName || t("notAvailableShort")}
             </li>
           </ul>
         </div>
@@ -30,18 +31,18 @@ const OmpSnapshot = ({ data }) => {
         {/* Section 1: Team & Personnel Snapshot */}
         <div className="bg-blue-50 p-4 border border-blue-200 rounded shadow-sm space-y-3">
           <h4 className="font-semibold text-blue-900 border-b border-blue-200 pb-2">
-            Section 1: Mobile Team Personnel
+            {t("ompSnapshotSection1")}
           </h4>
           <div className="text-sm text-gray-800 font-bold">
-            Team Number: <span className="text-blue-700">{data.teamNo || "N/A"}</span>
+            {t("teamNumber")}: <span className="text-blue-700">{data.teamNo || t("notAvailableShort")}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-blue-100">
             <div className="bg-white p-3 rounded border border-blue-100">
-              <span className="text-xs uppercase font-bold text-gray-500 block mb-1">Team Leader</span>
-              <p className="font-semibold text-gray-900">{leader.name || "N/A"}</p>
-              <p className="text-xs text-gray-600">Role: {leader.position || "N/A"}</p>
-              <p className="text-xs text-gray-600">CNIC: {leader.cnic || "N/A"}</p>
+              <span className="text-xs uppercase font-bold text-gray-500 block mb-1">{t("teamLeader")}</span>
+              <p className="font-semibold text-gray-900">{leader.name || t("notAvailableShort")}</p>
+              <p className="text-xs text-gray-600">{t("role")}: {leader.position || t("notAvailableShort")}</p>
+              <p className="text-xs text-gray-600">{t("cnic")}: {leader.cnic || t("notAvailableShort")}</p>
               {leader.states?.length > 0 && (
                 <div className="flex gap-1 mt-1">
                   {leader.states.map((s, idx) => (
@@ -52,10 +53,10 @@ const OmpSnapshot = ({ data }) => {
             </div>
 
             <div className="bg-white p-3 rounded border border-blue-100">
-              <span className="text-xs uppercase font-bold text-gray-500 block mb-1">Team Member</span>
-              <p className="font-semibold text-gray-900">{member.name || "N/A"}</p>
-              <p className="text-xs text-gray-600">Role: {member.position || "N/A"}</p>
-              <p className="text-xs text-gray-600">CNIC: {member.cnic || "N/A"}</p>
+              <span className="text-xs uppercase font-bold text-gray-500 block mb-1">{t("teamMember")}</span>
+              <p className="font-semibold text-gray-900">{member.name || t("notAvailableShort")}</p>
+              <p className="text-xs text-gray-600">{t("role")}: {member.position || t("notAvailableShort")}</p>
+              <p className="text-xs text-gray-600">{t("cnic")}: {member.cnic || t("notAvailableShort")}</p>
               {member.states?.length > 0 && (
                 <div className="flex gap-1 mt-1">
                   {member.states.map((s, idx) => (

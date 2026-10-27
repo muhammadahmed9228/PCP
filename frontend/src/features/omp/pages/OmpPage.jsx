@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm, FormProvider } from "react-hook-form";
 import { fetchOmp, saveOmpDraft, finalizeOmp, clearOmp } from "../store/ompSlice";
@@ -6,9 +6,13 @@ import { fetchTeams } from "../../teams/store/teamSlice";
 import { fetchGeography } from "../../geography/store/geographySlice";
 import { TabSetupLocation, TabPopulation, TabMaterials } from "../components/OmpFormTabs";
 import OmpSnapshot from "../components/OmpSnapshot";
+import { useTranslation } from "react-i18next";
+import "../../../i18n/i18n";
+import ExportExcelButton from "../../../components/shared/ExportExcelButton";
 
 const OmpPage = () => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { data: ompData, loading } = useSelector((state) => state.omp);
   const { teams } = useSelector((state) => state.teams);
   const { routes } = useSelector((state) => state.geography);
@@ -79,7 +83,7 @@ const OmpPage = () => {
 
   const handleSaveDraft = async (data) => {
     if (!selectedTeamId || !selectedDay || !selectedRouteId) {
-      alert("Please select a Team, Day, and Route before saving.");
+      alert(t("selectTeamDayRouteBeforeSaving"));
       return;
     }
     
@@ -88,71 +92,74 @@ const OmpPage = () => {
   };
 
   const handleFinalize = async () => {
-    if (window.confirm("Are you sure? Finalizing will lock this OMP.")) {
+    if (window.confirm(t("finalizeOmpConfirm"))) {
       await dispatch(finalizeOmp({ teamId: selectedTeamId, day: selectedDay }));
     }
   };
 
   const tabs = [
-    { label: "Route & Team Snapshot (Sec 0-1)", component: <OmpSnapshot data={ompData} /> },
-    { label: "Location & Sequence (Sec 2)", component: <TabSetupLocation /> },
-    { label: "Population & Coverage", component: <TabPopulation /> },
-    { label: "Material Required (Sec 3)", component: <TabMaterials /> }
+    { label: t("ompSnapshotTab"), component: <OmpSnapshot data={ompData} /> },
+    { label: t("ompLocationTab"), component: <TabSetupLocation /> },
+    { label: t("ompPopulationTab"), component: <TabPopulation /> },
+    { label: t("ompMaterialsTab"), component: <TabMaterials /> }
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-        <h2 className="text-2xl font-bold text-gray-800">Operational Micro Plan (OMP)</h2>
-        {context?.areaName && (
-          <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">
-            Area: <strong className="text-gray-800">{context.areaName} ({context.areaNo})</strong>
-          </span>
-        )}
+        <h2 className="text-2xl font-bold text-gray-800">{t("operationalMicroPlanTitle")}</h2>
+        <div className="flex items-center gap-2">
+          {context?.areaName && (
+            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">
+              {t("area")}: <strong className="text-gray-800">{context.areaName} ({context.areaNo})</strong>
+            </span>
+          )}
+          <ExportExcelButton collectionName="omp" data={ompData} disabled={!ompData} />
+        </div>
       </div>
       
       {/* Selection Header */}
       <div className="bg-white p-4 rounded-lg shadow border grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Select Mobile Team</label>
+          <label className="block text-sm font-medium text-gray-700">{t("selectMobileTeam")}</label>
           <select 
             value={selectedTeamId}
             onChange={(e) => setSelectedTeamId(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
           >
-            <option value="">-- Select Team --</option>
-            {mobileTeams.map(t => (
-              <option key={t._id} value={t._id}>Team {t.teamNo} ({t.leader?.name})</option>
+            <option value="">{t("selectTeam")}</option>
+            {mobileTeams.map(team => (
+              <option key={team._id} value={team._id}>{t("team")} {team.teamNo} ({team.leader?.name})</option>
             ))}
           </select>
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700">Campaign Day</label>
+          <label className="block text-sm font-medium text-gray-700">{t("campaignDay")}</label>
           <select 
             value={selectedDay}
             onChange={(e) => setSelectedDay(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
           >
-            <option value="">-- Select Day --</option>
-            <option value="1">Day 1</option>
-            <option value="2">Day 2</option>
-            <option value="3">Day 3</option>
+            <option value="">{t("selectDay")}</option>
+            <option value="1">{t("geoDay", { day: 1 })}</option>
+            <option value="2">{t("geoDay", { day: 2 })}</option>
+            <option value="3">{t("geoDay", { day: 3 })}</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Assigned Route</label>
+          <label className="block text-sm font-medium text-gray-700">{t("assignedRoute")}</label>
           <select 
             value={selectedRouteId}
             onChange={(e) => setSelectedRouteId(e.target.value)}
             disabled={isFinalized}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
           >
-            <option value="">-- Select Route --</option>
+            <option value="">{t("selectRoute")}</option>
             {displayedRoutes.map(r => (
               <option key={r._id} value={r._id}>
-                Route {r.routeNo}: {r.routeName} (Day {r.campaignDay})
+                {t("route")} {r.routeNo}: {r.routeName} ({t("geoDay", { day: r.campaignDay })})
               </option>
             ))}
           </select>
@@ -161,13 +168,13 @@ const OmpPage = () => {
 
       {!selectedTeamId || !selectedDay ? (
         <div className="bg-white p-8 text-center rounded-lg shadow border">
-          <p className="text-gray-500">Please select a Mobile Team and Campaign Day to view or create an OMP.</p>
+          <p className="text-gray-500">{t("selectMobileTeamDayHint")}</p>
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg flex flex-col">
           <div className={`px-6 py-3 border-b flex justify-between items-center ${isFinalized ? "bg-red-50 text-red-800" : "bg-blue-50 text-blue-800"}`}>
-            <span className="font-semibold">Status: {ompData?.status || "No Draft Yet"}</span>
-            {isFinalized && <span className="text-sm font-medium">Locked (Read-Only)</span>}
+            <span className="font-semibold">{t("status")}: {ompData?.status ? t(`ampStatus${ompData.status}`, { defaultValue: ompData.status }) : t("noDraftYet")}</span>
+            {isFinalized && <span className="text-sm font-medium">{t("lockedReadOnly")}</span>}
           </div>
 
           <FormProvider {...methods}>
@@ -198,9 +205,9 @@ const OmpPage = () => {
                   type="submit"
                   disabled={isFinalized || loading || !selectedRouteId}
                   className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  title={!selectedRouteId ? "Please select an assigned route" : ""}
+                  title={!selectedRouteId ? t("selectAssignedRoute") : ""}
                 >
-                  {loading ? "Saving..." : "Save Draft"}
+                  {loading ? t("saving") : t("saveDraft")}
                 </button>
                 <button
                   type="button"
@@ -208,7 +215,7 @@ const OmpPage = () => {
                   disabled={isFinalized || !ompData?._id}
                   className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                 >
-                  Finalize & Lock
+                  {t("finalizeLock")}
                 </button>
               </div>
             </form>

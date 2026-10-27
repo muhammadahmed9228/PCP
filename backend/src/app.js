@@ -11,8 +11,8 @@ app.use(cors({
 }));
 
 // Request payload size limits[cite: 1]
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
@@ -32,6 +32,8 @@ import transitSheetRoutes from "./modules/transitSheet/transitSheet.routes.js";
 import form2ARoutes from "./modules/form2a/form2a.routes.js";
 import form2BRoutes from "./modules/form2b/form2b.routes.js";
 import contextRoutes from "./modules/context/context.routes.js";
+import exportRoutes from "./modules/exports/export.routes.js";
+import imageRoutes from "./modules/images/image.routes.js";
 
 // Route Declarations
 app.use("/api/v1/auth", authRoutes);
@@ -49,6 +51,8 @@ app.use("/api/v1/transit-sheets", transitSheetRoutes);
 app.use("/api/v1/form2a", form2ARoutes);
 app.use("/api/v1/form2b", form2BRoutes);
 app.use("/api/v1/context", contextRoutes);
+app.use("/api/v1/exports", exportRoutes);
+app.use("/api/v1/images", imageRoutes);
 
 // Centralized error handling[cite: 1]
 app.use((err, req, res, next) => {

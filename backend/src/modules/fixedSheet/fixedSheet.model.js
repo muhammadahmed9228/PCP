@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ApiError } from "../../utils/ApiError.js";
+import { validateLogisticsConservation } from "../shared/sheetInvariants.js";
 
 // --- Sub-Schemas ---
 const vaccinatedChildSchema = new mongoose.Schema({
@@ -38,6 +39,10 @@ const fixedSheetSchema = new mongoose.Schema(
         team: { type: mongoose.Schema.Types.ObjectId, ref: "Team", required: true },
         campaignDay: { type: Number, required: true, min: 1, max: 7 },
         status: { type: String, enum: ["Draft", "Finalized"], default: "Draft" },
+        finalizedAt: { type: Date },
+        reopenedBy: { type: mongoose.Schema.Types.ObjectId, ref: "AIC" },
+        reopenReason: { type: String, trim: true, maxlength: 500 },
+        reopenedAt: { type: Date },
 
         // Sections 1-4: Snapshot Auto-populated Info
         snapshot: {
@@ -109,6 +114,9 @@ fixedSheetSchema.pre("save", function (next) {
     // Dynamically calculate summary totals based on the array lengths
     this.summary.totalVaccinated = this.vaccinatedChildren ? this.vaccinatedChildren.length : 0;
     this.summary.totalUnvaccinated = this.unvaccinatedChildren ? this.unvaccinatedChildren.length : 0;
+    if (this.status === "Finalized") {
+        validateLogisticsConservation(this.logistics, "Fixed Sheet");
+    }
 
     if (typeof next === "function") next();
 });

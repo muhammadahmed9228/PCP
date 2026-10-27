@@ -4,6 +4,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { AIC } from "../users/aic.model.js";
 import { Campaign } from "../campaigns/campaign.model.js";
 import { Area } from "../areas/area.model.js";
+import { escapeListSearch, isPagedList, parseListQuery } from "../../utils/listQuery.js";
 
 // Step 3 - Register new AIC[cite: 1]
 export const registerAIC = asyncHandler(async (req, res) => {
@@ -39,6 +40,28 @@ export const registerAIC = asyncHandler(async (req, res) => {
 
 // Step 3 - Select already-registered AICs from previous campaigns[cite: 1]
 export const getAICsForUCI = asyncHandler(async (req, res) => {
+    if (isPagedList(req.query)) {
+        const { page, limit, search, sort, direction } = parseListQuery(req.query, ["createdAt", "aicNo", "aicName", "username", "phoneNumber"]);
+        const assignment = req.query.assignment ?? "all";
+        const employment = req.query.employment ?? "all";
+        if (!["all", "assigned", "unassigned"].includes(assignment)) throw new ApiError(400, "Invalid assignment filter");
+        if (!["all", "government", "other"].includes(employment)) throw new ApiError(400, "Invalid employment filter");
+        const conditions = { registeredBy: req.user._id };
+        if (employment !== "all") conditions.isGovtEmployee = employment === "government";
+        if (assignment !== "all") {
+            const assignedIds = await Campaign.distinct("aics", { uci: req.user._id });
+            conditions._id = assignment === "assigned" ? { $in: assignedIds } : { $nin: assignedIds };
+        }
+        if (search) {
+            const pattern = new RegExp(escapeListSearch(search), "i");
+            conditions.$or = [{ aicNo: pattern }, { aicName: pattern }, { username: pattern }, { phoneNumber: pattern }];
+        }
+        const [items, total] = await Promise.all([
+            AIC.find(conditions).select("-password -refreshToken").sort({ [sort]: direction, _id: direction }).skip((page - 1) * limit).limit(limit),
+            AIC.countDocuments(conditions)
+        ]);
+        return res.status(200).json(new ApiResponse(200, { items, total, page, limit }, "AICs retrieved successfully"));
+    }
     // Only return AICs registered by this specific UCI[cite: 1]
     const aics = await AIC.find({ registeredBy: req.user._id }).select("-password -refreshToken");
 

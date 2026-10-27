@@ -19,8 +19,16 @@ const contextSlice = createSlice({
     areaId: null,
     areaName: null,
     areaNo: null,
+    uciName: null,
+    uciNo: null,
+    ucNumber: null,
+    ucName: null,
+    province: null,
+    district: null,
+    townTehsil: null,
     campaign: null,
     teamType: null,
+    assignments: [],
     loading: false,
     error: null
   },
@@ -29,8 +37,16 @@ const contextSlice = createSlice({
       state.areaId = null;
       state.areaName = null;
       state.areaNo = null;
+      state.uciName = null;
+      state.uciNo = null;
+      state.ucNumber = null;
+      state.ucName = null;
+      state.province = null;
+      state.district = null;
+      state.townTehsil = null;
       state.campaign = null;
       state.teamType = null;
+      state.assignments = [];
       state.error = null;
     }
   },
@@ -44,8 +60,16 @@ const contextSlice = createSlice({
         state.areaId = action.payload.areaId || null;
         state.areaName = action.payload.areaName || null;
         state.areaNo = action.payload.areaNo || null;
+        state.uciName = action.payload.uciName || null;
+        state.uciNo = action.payload.uciNo || null;
+        state.ucNumber = action.payload.ucNumber || null;
+        state.ucName = action.payload.ucName || null;
+        state.province = action.payload.province || null;
+        state.district = action.payload.district || null;
+        state.townTehsil = action.payload.townTehsil || null;
         state.campaign = action.payload.campaign || null;
         state.teamType = action.payload.teamType || null;
+        state.assignments = action.payload.assignments || [];
       })
       .addCase(bootstrapContext.rejected, (state, action) => {
         state.loading = false;

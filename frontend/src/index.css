@@ -1,1 +1,5 @@
 @import "tailwindcss";
+
+.font-urdu {
+  font-family: "Noto Naskh Arabic", "Noto Sans Arabic", sans-serif;
+}

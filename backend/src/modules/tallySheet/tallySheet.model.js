@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ApiError } from "../../utils/ApiError.js";
+import { validateLogisticsConservation } from "../shared/sheetInvariants.js";
 
 // -------------------------------------------------------------
 // Sub-Schemas for Data Arrays
@@ -106,6 +107,10 @@ const tallySheetSchema = new mongoose.Schema(
         team: { type: mongoose.Schema.Types.ObjectId, ref: "Team", required: true },
         campaignDay: { type: Number, enum: [1, 2, 3], required: true },
         status: { type: String, enum: ["Draft", "Finalized"], default: "Draft" },
+        finalizedAt: { type: Date },
+        reopenedBy: { type: mongoose.Schema.Types.ObjectId, ref: "AIC" },
+        reopenReason: { type: String, trim: true, maxlength: 500 },
+        reopenedAt: { type: Date },
 
         // Sections 1-4: Snapshot Auto-populated Info
         snapshot: {
@@ -268,6 +273,18 @@ tallySheetSchema.pre("save", function (next) {
                 sumMmpVacc += house.totalVacc;
             }
         });
+    }
+
+    if (this.status === "Finalized" && this.schools && this.schools.length > 0) {
+        this.schools.forEach((school, index) => {
+            if ((school.vaccinated || 0) > (school.childrenUnder5 || 0)) {
+                throw new ApiError(400, `School ${index + 1}: Vaccinated children cannot exceed children under 5.`);
+            }
+        });
+    }
+
+    if (this.status === "Finalized") {
+        validateLogisticsConservation(this.logistics, "Tally Sheet");
     }
 
     // 2. Process Section 7 (Schools)

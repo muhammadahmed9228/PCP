@@ -1,6 +1,4 @@
-import React from "react";
-
-const Form2BMobile = ({ data }) => {
+const Form2BMobile = ({ data, onReopenForm2A }) => {
   const rows = data?.aicMobilePerformances || [];
   const totals = data?.ucMobileTotals || {};
 
@@ -67,6 +65,9 @@ const Form2BMobile = ({ data }) => {
       <td className="border p-2">{r.vitaminA?.used?.blue || 0}</td>
       <td className="border p-2">{r.vitaminA?.returned?.red || 0}</td>
       <td className="border p-2">{r.vitaminA?.returned?.blue || 0}</td>
+      {onReopenForm2A && <td className="border p-2">
+        {isTotal ? "-" : <button type="button" onClick={() => onReopenForm2A(r.area)} className="whitespace-nowrap rounded bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800 hover:bg-orange-200">Reopen Form 2A</button>}
+      </td>}
     </>
   );
 
@@ -97,6 +98,7 @@ const Form2BMobile = ({ data }) => {
               <th className="border p-2" rowSpan="3">16. AFP</th>
               <th className="border p-2" rowSpan="3">17. Zero Dose RI</th>
               <th className="border p-2" colSpan="6">18. Vitamin A Capsules</th>
+              {onReopenForm2A && <th className="border p-2" rowSpan="3">Actions</th>}
             </tr>
             <tr className="bg-blue-100">
               <th className="border p-1" rowSpan="2">3.1 Target</th>

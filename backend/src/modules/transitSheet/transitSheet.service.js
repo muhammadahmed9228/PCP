@@ -1,31 +1,40 @@
 import { TransitSheet } from "./transitSheet.model.js";
-import { Point } from "../geography/geography.model.js";
 import { Area } from "../areas/area.model.js";
-import { Campaign } from "../campaigns/campaign.model.js";
 import { UCI } from "../users/uci.model.js";
-import { Team } from "../teams/team.model.js";
 import { AIC } from "../users/aic.model.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { refreshDraftForm2A } from "../form2a/form2a.service.js";
+import { withMongoTransaction } from "../../utils/mongoTransaction.js";
+import { assertTeamActor, resolveTeamAssignment } from "../shared/fieldTeamAssignments.js";
 
-export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, userId, payload) => {
+export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, actor, payload) => {
+    const editablePayload = { ...payload };
+    delete editablePayload.status;
+    delete editablePayload.finalizedAt;
+    delete editablePayload.reopenedBy;
+    delete editablePayload.reopenReason;
+    delete editablePayload.reopenedAt;
+    const { campaignId } = editablePayload;
+    delete editablePayload.campaignId;
+
     // 1. Verify Team (Must be "Transit" type)
-    const team = await Team.findById(teamId);
-    if (!team || team.teamType !== "Transit") {
-        throw new ApiError(403, "Invalid team. Transit sheets belong exclusively to Transit Teams.");
-    }
+    const team = await assertTeamActor(teamId, actor, "Transit");
 
     // 2. Requires pointId where pointType === "Transit"
     if (!pointId) {
         throw new ApiError(400, "Point ID is required where pointType === 'Transit'");
     }
 
-    const point = await Point.findById(pointId);
-    if (!point || point.pointType !== "Transit") {
-        throw new ApiError(400, "Invalid Point. Point must have pointType === 'Transit'.");
-    }
+    const { assignment: point, campaign } = await resolveTeamAssignment({
+        teamId,
+        campaignDay,
+        assignmentId: pointId,
+        campaignId,
+        teamType: "Transit",
+        requireAssignmentId: true
+    });
 
     const area = await Area.findById(point.area);
-    const campaign = await Campaign.findById(area.campaign);
     const uci = await UCI.findById(area.uci);
     const aic = await AIC.findById(area.aic);
 
@@ -33,7 +42,7 @@ export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, userId
         throw new ApiError(403, "Field sheets can only be modified when the Campaign is 'Active'.");
     }
 
-    let transitSheet = await TransitSheet.findOne({ team: teamId, campaignDay });
+    let transitSheet = await TransitSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id });
     if (transitSheet && transitSheet.status === "Finalized") {
         throw new ApiError(403, "This Transit Sheet is already finalized and locked.");
     }
@@ -61,7 +70,7 @@ export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, userId
     };
 
     const dataToSave = {
-        ...payload,
+        ...editablePayload,
         snapshot,
         campaign: campaign._id,
         area: area._id,
@@ -82,21 +91,21 @@ export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, userId
     return transitSheet;
 };
 
-export const getTransitSheetData = async (teamId, campaignDay, pointId) => {
-    let transitSheet = await TransitSheet.findOne({ team: teamId, campaignDay });
+export const getTransitSheetData = async (teamId, campaignDay, pointId, actor, campaignId) => {
+    const team = await assertTeamActor(teamId, actor, "Transit");
+    const { assignment: point, campaign } = await resolveTeamAssignment({
+        teamId,
+        campaignDay,
+        assignmentId: pointId,
+        campaignId,
+        teamType: "Transit",
+        requireAssignmentId: actor.role === "FieldTeam"
+    });
+    let transitSheet = await TransitSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id });
     if (transitSheet) return transitSheet;
 
-    let point = null;
-    if (pointId) {
-        point = await Point.findById(pointId);
-    } else {
-        point = await Point.findOne({ team: teamId, campaignDay, pointType: "Transit" });
-    }
-
-    if (point && point.pointType === "Transit") {
-        const team = await Team.findById(teamId);
+    if (point) {
         const area = await Area.findById(point.area);
-        const campaign = await Campaign.findById(area.campaign);
         const uci = await UCI.findById(area.uci);
         const aic = await AIC.findById(area.aic);
 
@@ -138,12 +147,34 @@ export const getTransitSheetData = async (teamId, campaignDay, pointId) => {
     return null;
 };
 
-export const finalizeTransitSheet = async (teamId, campaignDay) => {
-    const transitSheet = await TransitSheet.findOne({ team: teamId, campaignDay });
+export const finalizeTransitSheet = async (teamId, campaignDay, actor, campaignId, pointId, session = null) => {
+    if (!session) {
+        return withMongoTransaction((transactionSession) =>
+            finalizeTransitSheet(teamId, campaignDay, actor, campaignId, pointId, transactionSession)
+        );
+    }
+
+    const transitSheet = await TransitSheet.findOne({ team: teamId, campaignDay, ...(campaignId ? { campaign: campaignId } : {}), ...(pointId ? { point: pointId } : {}) }).session(session);
     if (!transitSheet) throw new ApiError(404, "Transit Sheet draft not found.");
+
+    await assertTeamActor(teamId, actor, "Transit");
+    const { assignment, campaign } = await resolveTeamAssignment({
+        teamId,
+        campaignDay,
+        assignmentId: pointId || transitSheet.point,
+        campaignId: campaignId || transitSheet.campaign,
+        teamType: "Transit",
+        session,
+        requireAssignmentId: actor.role === "FieldTeam"
+    });
+    if (String(transitSheet.point) !== String(assignment._id) || String(transitSheet.campaign) !== String(campaign._id)) {
+        throw new ApiError(409, "The selected assignment does not match this Transit Sheet.");
+    }
     if (transitSheet.status === "Finalized") throw new ApiError(400, "Transit Sheet is already finalized.");
 
     transitSheet.status = "Finalized";
-    await transitSheet.save();
+    transitSheet.finalizedAt = new Date();
+    await transitSheet.save({ session });
+    await refreshDraftForm2A(transitSheet.area, campaignDay, transitSheet.aic, session);
     return transitSheet;
 };

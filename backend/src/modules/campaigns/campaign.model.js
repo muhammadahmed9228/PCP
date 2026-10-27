@@ -12,6 +12,7 @@ const campaignSchema = new mongoose.Schema(
             enum: ["Planning", "Active", "Completed", "Paused", "Cancelled"],
             default: "Planning"
         },
+        completedAt: { type: Date },
         // Enforce data boundaries: Every campaign must strictly belong to a UCI[cite: 1]
         uci: {
             type: mongoose.Schema.Types.ObjectId,

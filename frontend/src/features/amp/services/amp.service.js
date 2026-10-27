@@ -12,5 +12,21 @@ export const ampService = {
   finalizeAMP: async (areaId) => {
     const response = await api.patch(`/amp/area/${areaId}/finalize`);
     return response.data;
+  },
+  getReviewList: async (campaignId) => {
+    const response = await api.get(`/amp/reviews/campaign/${campaignId}`);
+    return response.data;
+  },
+  getReview: async (areaId) => {
+    const response = await api.get(`/amp/reviews/area/${areaId}`);
+    return response.data;
+  },
+  approveAMP: async (areaId) => {
+    const response = await api.patch(`/amp/reviews/area/${areaId}/approve`);
+    return response.data;
+  },
+  reopenAMP: async (areaId, reason) => {
+    const response = await api.patch(`/amp/reviews/area/${areaId}/reopen`, { reason });
+    return response.data;
   }
 };

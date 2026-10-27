@@ -7,7 +7,17 @@ const ampSchema = new mongoose.Schema(
         area: { type: mongoose.Schema.Types.ObjectId, ref: "Area", required: true, unique: true },
         uci: { type: mongoose.Schema.Types.ObjectId, ref: "UCI", required: true },
         aic: { type: mongoose.Schema.Types.ObjectId, ref: "AIC", required: true },
-        status: { type: String, enum: ["Draft", "Finalized"], default: "Draft" },
+        status: { type: String, enum: ["Draft", "Reopened", "Finalized", "Approved"], default: "Draft" },
+        finalizedAt: { type: Date },
+        approvedAt: { type: Date },
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "UCI" },
+        reopenCount: { type: Number, default: 0, min: 0 },
+        reviewHistory: [{
+            action: { type: String, enum: ["Reopened", "Approved"], required: true },
+            reason: { type: String, trim: true, maxlength: 500 },
+            reviewer: { type: mongoose.Schema.Types.ObjectId, ref: "UCI", required: true },
+            at: { type: Date, required: true }
+        }],
 
         // Section 1: Auto-populated Snapshot Configuration
         sia: { type: String },

@@ -14,7 +14,6 @@ import transitSheetReducer from '../features/transitSheet/store/transitSheetSlic
 import form2aReducer from '../features/form2a/store/form2aSlice';
 import form2bReducer from '../features/form2b/store/form2bSlice';
 import contextReducer from '../features/context/store/contextSlice';
-// Later, you will integrate Redux Persist here for offline capabilities
 
 export const store = configureStore({
   reducer: {

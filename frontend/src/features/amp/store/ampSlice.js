@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { ampService } from "../services/amp.service";
 import { toast } from "react-toastify";
+import i18n from "../../../i18n/i18n";
 
 export const fetchAmp = createAsyncThunk(
   "amp/fetch",
@@ -19,10 +20,10 @@ export const saveAmpDraft = createAsyncThunk(
   async ({ areaId, data }, { rejectWithValue }) => {
     try {
       const response = await ampService.saveDraft(areaId, data);
-      toast.success("AMP Draft saved successfully");
+      toast.success(i18n.t("ampDraftSaved"));
       return response.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save draft");
+      toast.error(error.response?.data?.message || i18n.t("ampSaveFailed"));
       return rejectWithValue(error.response?.data?.message);
     }
   }
@@ -33,10 +34,10 @@ export const finalizeAmp = createAsyncThunk(
   async (areaId, { rejectWithValue }) => {
     try {
       const response = await ampService.finalizeAMP(areaId);
-      toast.success("AMP finalized and locked successfully");
+      toast.success(i18n.t("ampSubmittedNotice"));
       return response.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to finalize AMP");
+      toast.error(error.response?.data?.message || i18n.t("ampFinalizeFailed"));
       return rejectWithValue(error.response?.data?.message);
     }
   }

@@ -1,32 +1,47 @@
 import { TallySheet } from "./tallySheet.model.js";
 import { OMP } from "../omp/omp.model.js";
-import { Campaign } from "../campaigns/campaign.model.js";
-import { Team } from "../teams/team.model.js";
 import { AIC } from "../users/aic.model.js";
 import { UCI } from "../users/uci.model.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { refreshDraftForm2A } from "../form2a/form2a.service.js";
+import { withMongoTransaction } from "../../utils/mongoTransaction.js";
+import { assertTeamActor, resolveTeamAssignment } from "../shared/fieldTeamAssignments.js";
 
-export const saveTallySheetDraft = async (teamId, campaignDay, userId, payload) => {
+export const saveTallySheetDraft = async (teamId, campaignDay, actor, payload) => {
+    const editablePayload = { ...payload };
+    delete editablePayload.status;
+    delete editablePayload.finalizedAt;
+    delete editablePayload.reopenedBy;
+    delete editablePayload.reopenReason;
+    delete editablePayload.reopenedAt;
+    const { routeId, campaignId } = editablePayload;
+    delete editablePayload.routeId;
+    delete editablePayload.campaignId;
+
     // 1. Verify Team ownership
-    const team = await Team.findById(teamId);
-    if (!team || team.teamType !== "Mobile") {
-        throw new ApiError(403, "Invalid team. Tally sheets belong exclusively to Mobile Teams.");
-    }
+    const team = await assertTeamActor(teamId, actor, "Mobile");
+    const { assignment, campaign } = await resolveTeamAssignment({
+        teamId,
+        campaignDay,
+        assignmentId: routeId,
+        campaignId,
+        teamType: "Mobile",
+        requireAssignmentId: actor.role === "FieldTeam"
+    });
 
     // 2. Fetch the Finalized OMP for this Team and Day to guarantee planning alignment
-    const omp = await OMP.findOne({ team: teamId, campaignDay });
+    const omp = await OMP.findOne({ campaign: campaign._id, team: teamId, route: assignment._id, campaignDay });
     if (!omp || omp.status !== "Finalized") {
         throw new ApiError(400, `Cannot generate Tally Sheet: A Finalized OMP is required for Team ${team.teamNo} on Day ${campaignDay}.`);
     }
 
     // 3. Verify Campaign Status
-    const campaign = await Campaign.findById(omp.campaign);
     if (campaign.status !== "Active") {
         throw new ApiError(403, "Field sheets can only be generated and modified when the Campaign is 'Active'.");
     }
 
     // 4. Check if already finalized
-    let tallySheet = await TallySheet.findOne({ team: teamId, campaignDay });
+    let tallySheet = await TallySheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, route: assignment._id });
     if (tallySheet && tallySheet.status === "Finalized") {
         throw new ApiError(403, "This Tally Sheet is already finalized and locked.");
     }
@@ -57,13 +72,13 @@ export const saveTallySheetDraft = async (teamId, campaignDay, userId, payload) 
     };
 
     const dataToSave = {
-        ...payload,
+        ...editablePayload,
         snapshot,
         campaign: omp.campaign,
         area: omp.area,
         uci: omp.uci,
         aic: omp.aic,
-        route: omp.route,
+        route: assignment._id,
         team: teamId,
         campaignDay,
         status: "Draft"
@@ -78,17 +93,25 @@ export const saveTallySheetDraft = async (teamId, campaignDay, userId, payload) 
     return tallySheet;
 };
 
-export const getTallySheetData = async (teamId, campaignDay) => {
-    let tallySheet = await TallySheet.findOne({ team: teamId, campaignDay });
+export const getTallySheetData = async (teamId, campaignDay, actor, routeId, campaignId) => {
+    const team = await assertTeamActor(teamId, actor, "Mobile");
+    const { assignment, campaign } = await resolveTeamAssignment({
+        teamId,
+        campaignDay,
+        assignmentId: routeId,
+        campaignId,
+        teamType: "Mobile",
+        requireAssignmentId: actor.role === "FieldTeam"
+    });
+    let tallySheet = await TallySheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, route: assignment._id });
     if (tallySheet) return tallySheet;
 
     // If draft doesn't exist yet, check for Finalized OMP to clone snapshot for viewing
-    const omp = await OMP.findOne({ team: teamId, campaignDay, status: "Finalized" });
+    const omp = await OMP.findOne({ campaign: campaign._id, team: teamId, route: assignment._id, campaignDay, status: "Finalized" });
     if (!omp) {
         return null;
     }
 
-    const team = await Team.findById(teamId);
     const aic = await AIC.findById(omp.aic);
     const uci = await UCI.findById(omp.uci);
 
@@ -119,7 +142,7 @@ export const getTallySheetData = async (teamId, campaignDay) => {
         area: omp.area,
         uci: omp.uci,
         aic: omp.aic,
-        route: omp.route,
+        route: assignment._id,
         team: teamId,
         campaignDay,
         status: "Draft",
@@ -132,9 +155,29 @@ export const getTallySheetData = async (teamId, campaignDay) => {
     };
 };
 
-export const finalizeTallySheet = async (teamId, campaignDay) => {
-    const tallySheet = await TallySheet.findOne({ team: teamId, campaignDay });
+export const finalizeTallySheet = async (teamId, campaignDay, actor, campaignId, routeId, session = null) => {
+    if (!session) {
+        return withMongoTransaction((transactionSession) =>
+            finalizeTallySheet(teamId, campaignDay, actor, campaignId, routeId, transactionSession)
+        );
+    }
+
+    const tallySheet = await TallySheet.findOne({ team: teamId, campaignDay, ...(campaignId ? { campaign: campaignId } : {}), ...(routeId ? { route: routeId } : {}) }).session(session);
     if (!tallySheet) throw new ApiError(404, "Tally Sheet draft not found.");
+
+    await assertTeamActor(teamId, actor, "Mobile");
+    const { assignment, campaign } = await resolveTeamAssignment({
+        teamId,
+        campaignDay,
+        assignmentId: routeId || tallySheet.route,
+        campaignId: campaignId || tallySheet.campaign,
+        teamType: "Mobile",
+        session,
+        requireAssignmentId: actor.role === "FieldTeam"
+    });
+    if (String(tallySheet.route) !== String(assignment._id) || String(tallySheet.campaign) !== String(campaign._id)) {
+        throw new ApiError(409, "The selected assignment does not match this Tally Sheet.");
+    }
 
     if (tallySheet.status === "Finalized") {
         throw new ApiError(400, "Tally Sheet is already finalized.");
@@ -146,7 +189,9 @@ export const finalizeTallySheet = async (teamId, campaignDay) => {
     }
 
     tallySheet.status = "Finalized";
-    await tallySheet.save();
+    tallySheet.finalizedAt = new Date();
+    await tallySheet.save({ session });
+    await refreshDraftForm2A(tallySheet.area, campaignDay, tallySheet.aic, session);
 
     return tallySheet;
 };

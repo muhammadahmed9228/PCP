@@ -1,22 +1,32 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { fetchAreasForCampaign, createNewArea, editArea, removeArea, clearAreas } from "../store/areaSlice";
+import { createNewArea, editArea, removeArea } from "../store/areaSlice";
+import { areaService } from "../services/area.service";
+import { useServerList } from "../../../components/shared/useServerList";
+import ServerListControls from "../../../components/shared/ServerListControls";
 import { fetchCampaigns } from "../../campaigns/store/campaignSlice";
 import { fetchAICs } from "../../aics/store/aicSlice";
 import { createAreaSchema } from "../validations/area.schema";
 import Modal from "../../../components/shared/Modal";
+import { useTranslation } from "react-i18next";
+import "../../../i18n/i18n";
 
 const AreaManagementPage = () => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { campaigns } = useSelector((state) => state.campaigns);
   const { aics } = useSelector((state) => state.aics);
-  const { areas, loading: areasLoading } = useSelector((state) => state.areas);
+  const { loading: savingArea } = useSelector((state) => state.areas);
 
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [query, setQuery] = useState({ page: 1, limit: 10, search: "", aicId: "", sort: "areaNo", order: "asc" });
+  const loadAreas = useCallback((params, signal) => areaService.listAreasForCampaign(selectedCampaignId, params, signal), [selectedCampaignId]);
+  const { items: areas, total, occupiedAicIds = [], loading: areasLoading, error, refresh } = useServerList(loadAreas, query, Boolean(selectedCampaignId), selectedCampaignId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState(null);
+  const [viewingArea, setViewingArea] = useState(null);
 
   const {
     register,
@@ -43,20 +53,16 @@ const AreaManagementPage = () => {
     dispatch(fetchAICs());
   }, [dispatch]);
 
-  // Fetch areas when a campaign is selected
-  useEffect(() => {
-    if (selectedCampaignId) {
-      dispatch(fetchAreasForCampaign(selectedCampaignId));
-    } else {
-      dispatch(clearAreas());
-    }
-  }, [selectedCampaignId, dispatch]);
-
   const selectedCampaign = campaigns.find((c) => c._id === selectedCampaignId);
 
-  // Filter AICs strictly to those that have been assigned to this specific campaign
+  // Only campaign AICs can be selected; each can hold one area in that campaign.
   const assignedAicsToCampaign = aics.filter((aic) =>
-    selectedCampaign?.aics?.includes(aic._id)
+    selectedCampaign?.aics?.some((assigned) => String(assigned?._id || assigned) === String(aic._id))
+  );
+  const occupiedIds = new Set(occupiedAicIds.map(String));
+  const availableAicsForCreate = assignedAicsToCampaign.filter((aic) => !occupiedIds.has(String(aic._id)));
+  const availableAicsForEdit = assignedAicsToCampaign.filter((aic) =>
+    !occupiedIds.has(String(aic._id)) || String(editingArea?.aic?._id || editingArea?.aic) === String(aic._id)
   );
 
   const onSubmit = async (data) => {
@@ -71,7 +77,7 @@ const AreaManagementPage = () => {
     if (createNewArea.fulfilled.match(resultAction)) {
       setIsModalOpen(false);
       reset();
-      dispatch(fetchAreasForCampaign(selectedCampaignId));
+      refresh();
     }
   };
 
@@ -97,7 +103,7 @@ const AreaManagementPage = () => {
     if (editArea.fulfilled.match(resultAction)) {
       setEditingArea(null);
       resetEdit();
-      dispatch(fetchAreasForCampaign(selectedCampaignId));
+      refresh();
     }
   };
 
@@ -107,7 +113,8 @@ const AreaManagementPage = () => {
         `Are you sure you want to delete Area ${area.areaNo} ("${area.areaName}")? This action cannot be undone.`
       )
     ) {
-      await dispatch(removeArea(area._id));
+      const resultAction = await dispatch(removeArea(area._id));
+      if (removeArea.fulfilled.match(resultAction)) refresh();
     }
   };
 
@@ -118,7 +125,7 @@ const AreaManagementPage = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Manage Campaign Areas</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{t("manageAreasTitle")}</h2>
           <p className="text-sm text-gray-500 mt-1">
             Create, update, and manage designated areas and their assigned Area Incharges (AICs).
           </p>
@@ -127,10 +134,10 @@ const AreaManagementPage = () => {
         <div className="flex items-center gap-4">
           <select
             value={selectedCampaignId}
-            onChange={(e) => setSelectedCampaignId(e.target.value)}
+            onChange={(e) => { setSelectedCampaignId(e.target.value); setQuery(current => ({ ...current, page: 1, aicId: "" })); }}
             className="block w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
-            <option value="">-- Select a Campaign --</option>
+          <option value="">{t("selectCampaign")}</option>
             {campaigns.map((camp) => (
               <option key={camp._id} value={camp._id}>
                 {camp.campaignName} ({camp.status})
@@ -149,22 +156,29 @@ const AreaManagementPage = () => {
         </div>
       </div>
 
+      {selectedCampaignId && <ServerListControls query={query} setQuery={setQuery} total={total} loading={areasLoading} label="areas"
+        filters={[{ key: "aicId", label: "Assigned AIC", options: [
+          { value: "", label: "All AICs" },
+          ...assignedAicsToCampaign.map(aic => ({ value: aic._id, label: `${aic.aicName} (${aic.aicNo})` }))
+        ] }]}
+        sorts={[{ value: "areaNo", label: "Area number" }, { value: "areaName", label: "Area name" }, { value: "createdAt", label: "Created" }]} />}
+      {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {!selectedCampaignId ? (
         <div className="bg-white p-8 text-center rounded-lg shadow border border-gray-200">
-          <p className="text-gray-500">Please select a campaign to view or manage its areas.</p>
+            <p className="text-gray-500">{t("selectCampaignAreasHint")}</p>
         </div>
       ) : areasLoading ? (
-        <p className="text-gray-500">Loading areas...</p>
+            <p className="text-gray-500">{t("loadingAreas")}</p>
       ) : (
         <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Area No</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Area Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned AIC</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">AIC Phone</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("areaNo")}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("areaName")}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("assignedAic")}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("aicPhone")}</th>
+              <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("actions")}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -190,7 +204,14 @@ const AreaManagementPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {area.aic?.phoneNumber || "N/A"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 bg-gray-100 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => setViewingArea(area)}
+                      className="text-blue-700 hover:text-blue-900 mr-4"
+                      title="View Area details"
+                    >
+                      View
+                    </button>
                     <button
                       onClick={() => handleOpenEdit(area)}
                       disabled={isCompleted}
@@ -221,6 +242,28 @@ const AreaManagementPage = () => {
           </table>
         </div>
       )}
+
+      {/* Read-only Area Details Modal */}
+      <Modal isOpen={!!viewingArea} onClose={() => setViewingArea(null)} title={`View Area: ${viewingArea?.areaName || ""}`}>
+        {viewingArea && (
+          <div className="space-y-4 text-sm">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Area Number</dt><dd className="mt-1 text-gray-900">{viewingArea.areaNo || "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Area Name</dt><dd className="mt-1 text-gray-900">{viewingArea.areaName || "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">Assigned AIC</dt><dd className="mt-1 text-gray-900">{viewingArea.aic?.aicName || "Unknown AIC"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">AIC Number</dt><dd className="mt-1 text-gray-900">{viewingArea.aic?.aicNo || "—"}</dd></div>
+              <div><dt className="text-xs font-semibold uppercase text-gray-500">AIC Phone</dt><dd className="mt-1 text-gray-900">{viewingArea.aic?.phoneNumber || "N/A"}</dd></div>
+            </dl>
+            <div>
+              <div className="text-xs font-semibold uppercase text-gray-500">Description</div>
+              <div className="mt-1 rounded-md border border-gray-200 bg-white p-3 text-gray-700 whitespace-pre-wrap">{viewingArea.areaDescription || "No description provided."}</div>
+            </div>
+            <div className="flex justify-end border-t pt-4">
+              <button type="button" onClick={() => setViewingArea(null)} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-sm">Close</button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Create Area Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create Area & Assign AIC">
@@ -265,7 +308,7 @@ const AreaManagementPage = () => {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="">-- Select an Assigned AIC --</option>
-              {assignedAicsToCampaign.map((aic) => (
+              {availableAicsForCreate.map((aic) => (
                 <option key={aic._id} value={aic._id}>
                   {aic.aicName} (AIC No: {aic.aicNo})
                 </option>
@@ -276,6 +319,9 @@ const AreaManagementPage = () => {
               <p className="text-sm text-orange-600 mt-2">
                 No AICs are assigned to this campaign yet. Please assign AICs first in the AIC Management tab.
               </p>
+            )}
+            {assignedAicsToCampaign.length > 0 && availableAicsForCreate.length === 0 && (
+              <p className="text-sm text-orange-600 mt-2">{t("areaAllAicsAssigned")}</p>
             )}
           </div>
 
@@ -289,10 +335,10 @@ const AreaManagementPage = () => {
             </button>
             <button
               type="submit"
-              disabled={areasLoading || assignedAicsToCampaign.length === 0}
+              disabled={savingArea || areasLoading || availableAicsForCreate.length === 0}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
             >
-              {areasLoading ? "Saving..." : "Create & Assign"}
+              {savingArea ? "Saving..." : "Create & Assign"}
             </button>
           </div>
         </form>
@@ -338,7 +384,7 @@ const AreaManagementPage = () => {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="">-- Select an Assigned AIC --</option>
-              {assignedAicsToCampaign.map((aic) => (
+              {availableAicsForEdit.map((aic) => (
                 <option key={aic._id} value={aic._id}>
                   {aic.aicName} (AIC No: {aic.aicNo})
                 </option>
@@ -357,10 +403,10 @@ const AreaManagementPage = () => {
             </button>
             <button
               type="submit"
-              disabled={areasLoading}
+              disabled={savingArea}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
             >
-              {areasLoading ? "Saving..." : "Save Changes"}
+              {savingArea ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

@@ -1,3 +1,4 @@
+import i18n from "../../../i18n/i18n";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { ompService } from "../services/omp.service";
 import { toast } from "react-toastify";
@@ -19,10 +20,10 @@ export const saveOmpDraft = createAsyncThunk(
   async ({ teamId, day, data }, { rejectWithValue }) => {
     try {
       const response = await ompService.saveDraft(teamId, day, data);
-      toast.success("OMP Draft saved successfully");
+      toast.success(i18n.t("ompDraftSaved"));
       return response.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save draft");
+      toast.error(error.response?.data?.message || i18n.t("ampSaveFailed"));
       return rejectWithValue(error.response?.data?.message);
     }
   }
@@ -33,10 +34,10 @@ export const finalizeOmp = createAsyncThunk(
   async ({ teamId, day }, { rejectWithValue }) => {
     try {
       const response = await ompService.finalizeOMP(teamId, day);
-      toast.success("OMP finalized and locked successfully");
+      toast.success(i18n.t("ompFinalized"));
       return response.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to finalize OMP");
+      toast.error(error.response?.data?.message || i18n.t("ompFinalizeFailed"));
       return rejectWithValue(error.response?.data?.message);
     }
   }

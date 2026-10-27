@@ -1,6 +1,4 @@
-import React from "react";
-
-const AicSummaryTable = ({ title, rows = [], totals = {}, headerBg = "bg-indigo-50", footerBg = "bg-indigo-800" }) => {
+const AicSummaryTable = ({ title, rows = [], totals = {}, headerBg = "bg-indigo-50", footerBg = "bg-indigo-800", onReopenForm2A }) => {
   if (rows.length === 0) {
     return (
       <div className="p-4 text-gray-500 italic border rounded bg-gray-50">
@@ -36,6 +34,9 @@ const AicSummaryTable = ({ title, rows = [], totals = {}, headerBg = "bg-indigo-
       {/* 7 & 8. AFP & Zero Dose RI */}
       <td className="border p-2">{r.afpCases || 0}</td>
       <td className="border p-2">{r.zeroDoseRI || 0}</td>
+      {onReopenForm2A && <td className="border p-2">
+        {isTotal ? "-" : <button type="button" onClick={() => onReopenForm2A(r.area)} className="whitespace-nowrap rounded bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800 hover:bg-orange-200">Reopen Form 2A</button>}
+      </td>}
     </>
   );
 
@@ -54,6 +55,7 @@ const AicSummaryTable = ({ title, rows = [], totals = {}, headerBg = "bg-indigo-
               <th className="border p-2" colSpan="3">6. Finger Markers</th>
               <th className="border p-2" rowSpan="3">7. AFP Cases</th>
               <th className="border p-2" rowSpan="3">8. Zero Dose RI</th>
+              {onReopenForm2A && <th className="border p-2" rowSpan="3">Actions</th>}
             </tr>
             <tr>
               <th className="border p-1" rowSpan="2">4.1 Rec</th>
@@ -94,7 +96,7 @@ const AicSummaryTable = ({ title, rows = [], totals = {}, headerBg = "bg-indigo-
   );
 };
 
-const Form2BFixedTransit = ({ data }) => {
+const Form2BFixedTransit = ({ data, onReopenForm2A }) => {
   return (
     <div className="space-y-8">
       <AicSummaryTable
@@ -103,6 +105,7 @@ const Form2BFixedTransit = ({ data }) => {
         totals={data?.ucFixedTotals}
         headerBg="bg-indigo-50 text-indigo-900"
         footerBg="bg-indigo-800"
+        onReopenForm2A={onReopenForm2A}
       />
 
       <AicSummaryTable
@@ -111,6 +114,7 @@ const Form2BFixedTransit = ({ data }) => {
         totals={data?.ucTransitTotals}
         headerBg="bg-teal-50 text-teal-900"
         footerBg="bg-teal-800"
+        onReopenForm2A={onReopenForm2A}
       />
     </div>
   );

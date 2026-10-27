@@ -1,4 +1,3 @@
-import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import LoginPage from "../features/auth/pages/LoginPage";
@@ -23,8 +22,10 @@ const PrivateRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+const dashboardPath = (role) => role === "AIC" ? "/dashboard/aic" : role === "FieldTeam" ? "/dashboard/team" : "/dashboard/uci";
+
 const AppRoutes = () => {
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   return (
     <Routes>
@@ -33,7 +34,7 @@ const AppRoutes = () => {
         path="/login"
         element={
           isAuthenticated ? (
-            <Navigate to="/dashboard/uci" replace />
+            <Navigate to={dashboardPath(user?.role)} replace />
           ) : (
             <LoginPage />
           )
@@ -43,7 +44,7 @@ const AppRoutes = () => {
         path="/register"
         element={
           isAuthenticated ? (
-            <Navigate to="/dashboard/uci" replace />
+            <Navigate to={dashboardPath(user?.role)} replace />
           ) : (
             <RegisterPage />
           )
@@ -75,7 +76,7 @@ const AppRoutes = () => {
 
 
       // Public Route
-      <Route path="/team/login" element={isAuthenticated ? <Navigate to="/dashboard/team" replace /> : <TeamLoginPage />} />
+      <Route path="/team/login" element={isAuthenticated ? <Navigate to={dashboardPath(user?.role)} replace /> : <TeamLoginPage />} />
 
 // Protected Route
       <Route

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ApiError } from "../../utils/ApiError.js";
+import { CAMPAIGN_DAYS } from "../shared/campaignDays.js";
 
 // --- Sub-Schemas for Team Performances ---
 
@@ -88,8 +89,12 @@ const form2ASchema = new mongoose.Schema(
         area: { type: mongoose.Schema.Types.ObjectId, ref: "Area", required: true },
         uci: { type: mongoose.Schema.Types.ObjectId, ref: "UCI", required: true },
         aic: { type: mongoose.Schema.Types.ObjectId, ref: "AIC", required: true },
-        campaignDay: { type: Number, enum: [1, 2, 3], required: true },
+        campaignDay: { type: Number, enum: CAMPAIGN_DAYS, required: true },
         status: { type: String, enum: ["Draft", "Finalized"], default: "Draft" },
+        finalizedAt: { type: Date },
+        reopenedBy: { type: mongoose.Schema.Types.ObjectId, ref: "UCI" },
+        reopenReason: { type: String, trim: true, maxlength: 500 },
+        reopenedAt: { type: Date },
 
         // Sections 1-3: Snapshot Auto-populated Info
         snapshot: {

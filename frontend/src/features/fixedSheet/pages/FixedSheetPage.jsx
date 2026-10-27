@@ -1,16 +1,21 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm, FormProvider } from "react-hook-form";
-import { fetchFixedSheet, saveFixedSheetDraft, finalizeFixedSheet, clearFixedSheet } from "../store/fixedSheetSlice";
+import { fetchFixedSheet, saveFixedSheetDraft, finalizeFixedSheet, reopenFixedSheet, clearFixedSheet } from "../store/fixedSheetSlice";
 import { fetchTeams } from "../../teams/store/teamSlice";
 import { fetchGeography } from "../../geography/store/geographySlice";
 import { TabVaccinated, TabMedical } from "../components/FixedSheetTabs";
 import FixedSheetSummary from "../components/FixedSheetSummary";
 import FixedSheetSnapshot from "../components/FixedSheetSnapshot";
 import SectionLogistics from "../../tallySheet/components/SectionLogistics";
+import { useTranslation } from "react-i18next";
+import "../../../i18n/i18n";
+import ExportExcelButton from "../../../components/shared/ExportExcelButton";
+import AssignedGeographyImage from "../../geography/components/AssignedGeographyImage";
 
 const FixedSheetPage = () => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { data: sheetData, loading } = useSelector((state) => state.fixedSheet);
   const { teams } = useSelector((state) => state.teams);
   const { points } = useSelector((state) => state.geography);
@@ -18,13 +23,20 @@ const FixedSheetPage = () => {
 
   const { user } = useSelector(state => state.auth);
   const isFieldTeam = user?.role === "FieldTeam";
+  const isAic = user?.role === "AIC";
 
   const [selectedTeamId, setSelectedTeamId] = useState(isFieldTeam ? user._id : "");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedPointId, setSelectedPointId] = useState("");
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [activeTab, setActiveTab] = useState(0);
 
   const activeAreaId = context?.areaId;
+  const fieldAssignments = (context.assignments || []).filter((assignment) => assignment.teamType === "Fixed" && assignment.assignmentType === "Point");
+  const selectedAssignment = fieldAssignments.find((assignment) => String(assignment.assignmentId) === String(selectedAssignmentId));
+  const operationalDay = isFieldTeam ? selectedAssignment?.campaignDay?.toString() || "" : selectedDay;
+  const operationalPointId = isFieldTeam ? selectedAssignment?.assignmentId : selectedPointId;
+  const operationalCampaignId = isFieldTeam ? selectedAssignment?.campaignId : context?.campaign?._id;
 
   useEffect(() => {
     if (!isFieldTeam) dispatch(fetchTeams());
@@ -47,23 +59,27 @@ const FixedSheetPage = () => {
           Number(p.campaignDay) === Number(selectedDay)
       );
       if (matchingPoint) {
+        // The selected point is synchronized from the assigned team/day context.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedPointId(matchingPoint._id);
       }
     }
   }, [selectedTeamId, selectedDay, fixedPoints]);
 
   useEffect(() => {
-    if (selectedTeamId && selectedDay) {
-      dispatch(fetchFixedSheet({ teamId: selectedTeamId, day: selectedDay, pointId: selectedPointId }));
+    if (selectedTeamId && operationalDay) {
+      dispatch(fetchFixedSheet({ teamId: selectedTeamId, day: operationalDay, pointId: operationalPointId, campaignId: operationalCampaignId }));
     } else {
       dispatch(clearFixedSheet());
       methods.reset();
     }
-  }, [selectedTeamId, selectedDay, selectedPointId, dispatch, methods]);
+  }, [selectedTeamId, operationalDay, operationalPointId, operationalCampaignId, dispatch, methods]);
 
   useEffect(() => {
     if (sheetData) {
       methods.reset(sheetData);
+      // The server-selected point must be reflected in the controlled selector.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (sheetData.point) setSelectedPointId(sheetData.point);
     }
   }, [sheetData, methods]);
@@ -79,27 +95,37 @@ const FixedSheetPage = () => {
   const displayedPoints = teamPoints.length > 0 ? teamPoints : fixedPoints;
 
   const handleSaveDraft = async (data) => {
-    if (!selectedTeamId || !selectedDay || !selectedPointId) {
-      alert("Please select a Fixed Point before saving.");
+    if (!selectedTeamId || !operationalDay || !operationalPointId) {
+      alert(t("selectFixedPointBeforeSaving"));
       return;
     }
-    const payload = { ...data, pointId: selectedPointId };
-    await dispatch(saveFixedSheetDraft({ teamId: selectedTeamId, day: selectedDay, data: payload }));
+    const payload = { ...data, pointId: operationalPointId, campaignId: operationalCampaignId };
+    await dispatch(saveFixedSheetDraft({ teamId: selectedTeamId, day: operationalDay, data: payload }));
   };
 
   const handleFinalize = async () => {
-    if (window.confirm("Finalize Fixed Sheet? This will lock the sheet.")) {
-      await dispatch(finalizeFixedSheet({ teamId: selectedTeamId, day: selectedDay }));
+    if (window.confirm(t("finalizeFixedSheetConfirm"))) {
+      await dispatch(finalizeFixedSheet({ teamId: selectedTeamId, day: operationalDay, campaignId: operationalCampaignId, pointId: operationalPointId }));
+    }
+  };
+
+  const handleReopen = async () => {
+    const reason = window.prompt("Enter the reason for reopening this Fixed Sheet:");
+    if (reason?.trim()) {
+      await dispatch(reopenFixedSheet({ teamId: selectedTeamId, day: selectedDay, reason }));
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-        <h2 className="text-2xl font-bold text-gray-800">Fixed Team Sheet</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-gray-800">{t("fixedTeamSheet")}</h2>
+          <ExportExcelButton collectionName="fixedsheet" data={sheetData} disabled={!sheetData} />
+        </div>
         {context?.areaName && (
           <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">
-            Area: <strong className="text-gray-800">{context.areaName} ({context.areaNo})</strong>
+            {t("area")}: <strong className="text-gray-800">{context.areaName} ({context.areaNo})</strong>
           </span>
         )}
       </div>
@@ -108,40 +134,43 @@ const FixedSheetPage = () => {
       <div className="bg-white p-4 rounded-lg shadow border grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {!isFieldTeam && (
           <div>
-            <label className="block text-sm font-medium">Select Fixed Team</label>
+            <label className="block text-sm font-medium">{t("selectFixedTeam")}</label>
             <select value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)} className="mt-1 w-full px-3 py-2 border rounded">
-              <option value="">-- Choose --</option>
+              <option value="">{t("choose")}</option>
               {fixedTeams.map(t => <option key={t._id} value={t._id}>Team {t.teamNo} ({t.leader?.name})</option>)}
             </select>
           </div>
         )}
-        <div>
-          <label className="block text-sm font-medium">Campaign Day</label>
+        {!isFieldTeam && <div>
+          <label className="block text-sm font-medium">{t("campaignDay")}</label>
           <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)} className="mt-1 w-full px-3 py-2 border rounded">
-            <option value="">-- Day --</option>
+            <option value="">{t("dayPlaceholder")}</option>
             {[1, 2, 3, 4, 5, 6, 7].map(d => (
               <option key={d} value={d}>Day {d}</option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Fixed Point Location</label>
+        </div>}
+        {isFieldTeam ? <div className="md:col-span-2 space-y-2">
+          {fieldAssignments.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">No active fixed point has been assigned to this team yet.</p>}
+          {fieldAssignments.map((assignment) => { const isSelected = String(assignment.assignmentId) === String(selectedAssignmentId); return <button key={assignment.assignmentId} type="button" onClick={() => setSelectedAssignmentId(assignment.assignmentId)} className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-300"}`}><span className="flex items-center justify-between gap-3"><span className="font-semibold text-slate-900">Day {assignment.campaignDay} · {assignment.label}</span><span className="text-xs font-semibold text-slate-500">{assignment.sheetStatus}</span></span><span className="mt-1 block text-xs text-slate-500">{assignment.areaName || "Assigned area"}</span></button>; })}
+        </div> : <div>
+          <label className="block text-sm font-medium">{t("fixedPointLocation")}</label>
           <select value={selectedPointId} onChange={e => setSelectedPointId(e.target.value)} disabled={isFinalized} className="mt-1 w-full px-3 py-2 border rounded disabled:bg-gray-100">
-            <option value="">-- Select Point --</option>
+            <option value="">{t("selectPoint")}</option>
             {displayedPoints.map(p => <option key={p._id} value={p._id}>{p.pointNo} - {p.pointName} (Day {p.campaignDay})</option>)}
           </select>
-        </div>
+        </div>}
       </div>
 
-      {!selectedTeamId || !selectedDay ? (
+      {!selectedTeamId || !operationalDay ? (
         <div className="bg-white p-8 text-center rounded border shadow text-gray-500">
-          Select a Fixed Team and Day to view or fill the Fixed Sheet.
+          {t("selectFixedTeamDayHint")}
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg flex flex-col">
           <div className={`px-6 py-3 border-b flex justify-between items-center ${isFinalized ? "bg-red-50" : "bg-blue-50"}`}>
-            <span className="font-semibold text-gray-800">Status: {sheetData?.status || "No Draft"}</span>
-            {isFinalized && <span className="text-red-700 font-bold">LOCKED</span>}
+            <span className="font-semibold text-gray-800">{t("status")}: {sheetData?.status || t("noDraft")}</span>
+            {isFinalized && <span className="text-red-700 font-bold">{t("locked")}</span>}
           </div>
 
           <FormProvider {...methods}>
@@ -151,15 +180,15 @@ const FixedSheetPage = () => {
               </div>
 
               <div className="flex border-b bg-gray-50 mt-4 overflow-x-auto">
-                <button type="button" onClick={() => setActiveTab(0)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 0 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>0. Snapshot (Sec 1-4)</button>
-                <button type="button" onClick={() => setActiveTab(1)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 1 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>1. Vaccinations</button>
-                <button type="button" onClick={() => setActiveTab(2)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 2 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>2. Medical Cases</button>
-                <button type="button" onClick={() => setActiveTab(3)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 3 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>3. Logistics</button>
+                <button type="button" onClick={() => setActiveTab(0)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 0 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>{t("snapshotTab")}</button>
+                <button type="button" onClick={() => setActiveTab(1)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 1 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>{t("vaccinationsTab")}</button>
+                <button type="button" onClick={() => setActiveTab(2)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 2 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>{t("medicalCasesTab")}</button>
+                <button type="button" onClick={() => setActiveTab(3)} className={`whitespace-nowrap px-6 py-3 text-sm font-bold ${activeTab === 3 ? 'border-b-2 border-blue-600 text-blue-700 bg-white' : 'text-gray-500'}`}>{t("logisticsTab")}</button>
               </div>
 
               <div className="p-6">
                 <fieldset disabled={isFinalized}>
-                  {activeTab === 0 && <FixedSheetSnapshot snapshot={sheetData?.snapshot} day={selectedDay} />}
+                  {activeTab === 0 && <><FixedSheetSnapshot snapshot={sheetData?.snapshot} day={operationalDay} /><AssignedGeographyImage kind="point" day={operationalDay} assignmentId={isFieldTeam ? operationalPointId : undefined} assignmentImage={isFieldTeam ? selectedAssignment?.image : undefined} /></>}
                   {activeTab === 1 && <TabVaccinated />}
                   {activeTab === 2 && <TabMedical />}
                   {activeTab === 3 && <SectionLogistics />}
@@ -167,11 +196,12 @@ const FixedSheetPage = () => {
               </div>
 
               <div className="p-6 bg-gray-50 border-t flex justify-end gap-4">
+                {isAic && isFinalized && <button type="button" onClick={handleReopen} disabled={loading} className="px-6 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50">Reopen for correction</button>}
                 <button type="submit" disabled={isFinalized || loading || !selectedPointId} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-                  {loading ? "Saving..." : "Save Draft"}
+                  {loading ? t("saving") : t("saveDraft")}
                 </button>
                 <button type="button" onClick={handleFinalize} disabled={isFinalized || !sheetData?._id} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
-                  Validate & Finalize
+                  {t("validateFinalize")}
                 </button>
               </div>
 

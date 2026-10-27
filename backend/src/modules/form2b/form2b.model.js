@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { CAMPAIGN_DAYS } from "../shared/campaignDays.js";
 
 // --- Reusable Sub-Schemas ---
 
@@ -122,13 +123,14 @@ const form2BSchema = new mongoose.Schema(
         // Core Relational References
         campaign: { type: mongoose.Schema.Types.ObjectId, ref: "Campaign", required: true },
         uci: { type: mongoose.Schema.Types.ObjectId, ref: "UCI", required: true },
-        campaignDay: { type: Number, enum: [1, 2, 3], required: true },
+        campaignDay: { type: Number, enum: CAMPAIGN_DAYS, required: true },
         status: { type: String, enum: ["Draft", "Finalized"], default: "Draft" },
 
         // Audit Trail for Finalization & Reopening
         finalizedAt: { type: Date },
+        reopenedBy: { type: mongoose.Schema.Types.ObjectId, ref: "UCI" },
         reopenedAt: { type: Date },
-        reopenReason: { type: String },
+        reopenReason: { type: String, trim: true, maxlength: 500 },
 
         // Sections 1 - 3: Auto-Populated Snapshot (Campaign, UCI, UC Geography)
         snapshot: {

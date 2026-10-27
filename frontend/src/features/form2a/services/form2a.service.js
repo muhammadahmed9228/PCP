@@ -9,5 +9,9 @@ export const form2aService = {
   finalizeForm2A: async (areaId, day) => {
     const response = await api.patch(`/form2a/area/${areaId}/day/${day}/finalize`);
     return response.data;
+  },
+  reopenForm2A: async (areaId, day, reason) => {
+    const response = await api.patch(`/form2a/area/${areaId}/day/${day}/reopen`, { reason });
+    return response.data;
   }
 };

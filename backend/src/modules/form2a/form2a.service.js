@@ -7,7 +7,12 @@ import { TallySheet } from "../tallySheet/tallySheet.model.js";
 import { FixedSheet } from "../fixedSheet/fixedSheet.model.js";
 import { TransitSheet } from "../transitSheet/transitSheet.model.js";
 import { OMP } from "../omp/omp.model.js";
+import { refreshDraftForm2B } from "../form2b/form2b.service.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { withMongoTransaction } from "../../utils/mongoTransaction.js";
+import { assertForm2AReadyToFinalize } from "../completion/completion.service.js";
+
+const withSession = (query, session) => (session ? query.session(session) : query);
 
 // Helper function to sum logistics objects
 const sumLogistics = (sheets, fieldPath) => {
@@ -20,30 +25,30 @@ const sumLogistics = (sheets, fieldPath) => {
     }, { received: 0, used: 0, returned: 0 });
 };
 
-export const generateOrUpdateForm2ADraft = async (areaId, campaignDay, aicId) => {
+export const generateOrUpdateForm2ADraft = async (areaId, campaignDay, aicId, session = null) => {
     // 1. Authorization and Hierarchy
-    const area = await Area.findById(areaId);
+    const area = await withSession(Area.findById(areaId), session);
     if (!area || area.aic.toString() !== aicId.toString()) {
         throw new ApiError(403, "Unauthorized access to this Area.");
     }
-    const campaign = await Campaign.findById(area.campaign);
+    const campaign = await withSession(Campaign.findById(area.campaign), session);
     if (campaign.status !== "Active") {
         throw new ApiError(400, "Campaign is not Active.");
     }
-    const uci = await UCI.findById(area.uci);
-    const aic = await AIC.findById(area.aic);
+    const uci = await withSession(UCI.findById(area.uci), session);
+    const aic = await withSession(AIC.findById(area.aic), session);
 
     // 2. Prevent update if already Finalized
-    let form2A = await Form2A.findOne({ area: areaId, campaignDay });
+    let form2A = await withSession(Form2A.findOne({ area: areaId, campaignDay }), session);
     if (form2A && form2A.status === "Finalized") {
         return form2A; // Return existing locked document
     }
 
     // 3. Fetch all Finalized data for this Area & Day
-    const omps = await OMP.find({ area: areaId, campaignDay, status: "Finalized" });
-    const tallySheets = await TallySheet.find({ area: areaId, campaignDay, status: "Finalized" });
-    const fixedSheets = await FixedSheet.find({ area: areaId, campaignDay, status: "Finalized" });
-    const transitSheets = await TransitSheet.find({ area: areaId, campaignDay, status: "Finalized" });
+    const omps = await withSession(OMP.find({ area: areaId, campaignDay, status: "Finalized" }), session);
+    const tallySheets = await withSession(TallySheet.find({ area: areaId, campaignDay, status: "Finalized" }), session);
+    const fixedSheets = await withSession(FixedSheet.find({ area: areaId, campaignDay, status: "Finalized" }), session);
+    const transitSheets = await withSession(TransitSheet.find({ area: areaId, campaignDay, status: "Finalized" }), session);
 
     // 4. Construct Section 5: Mobile Performances
     const mobilePerformances = tallySheets.map(tally => {
@@ -198,22 +203,50 @@ export const generateOrUpdateForm2ADraft = async (areaId, campaignDay, aicId) =>
     };
 
     if (form2A) {
-        form2A = await Form2A.findByIdAndUpdate(form2A._id, dataToSave, { new: true });
+        form2A = await Form2A.findByIdAndUpdate(form2A._id, dataToSave, { new: true, session });
     } else {
-        form2A = await Form2A.create(dataToSave);
+        if (session) {
+            [form2A] = await Form2A.create([dataToSave], { session });
+        } else {
+            form2A = await Form2A.create(dataToSave);
+        }
     }
 
     return form2A;
 };
 
-export const finalizeForm2A = async (areaId, campaignDay, aicId) => {
-    const form2A = await Form2A.findOne({ area: areaId, campaignDay, aic: aicId });
+export const refreshDraftForm2A = async (areaId, campaignDay, aicId, session = null) => {
+    const form2A = await withSession(
+        Form2A.findOne({ area: areaId, campaignDay, aic: aicId }),
+        session
+    );
+
+    if (!form2A || form2A.status !== "Draft") return form2A;
+    return generateOrUpdateForm2ADraft(areaId, campaignDay, aicId, session);
+};
+
+export const finalizeForm2A = async (areaId, campaignDay, aicId, session = null) => {
+    if (!session) {
+        return withMongoTransaction((transactionSession) =>
+            finalizeForm2A(areaId, campaignDay, aicId, transactionSession)
+        );
+    }
+
+    const form2A = await Form2A.findOne({ area: areaId, campaignDay, aic: aicId }).session(session);
     if (!form2A) throw new ApiError(404, "Form 2A Draft not found. Generate it first.");
     if (form2A.status === "Finalized") throw new ApiError(400, "Form 2A is already finalized.");
+
+    const campaign = await Campaign.findById(form2A.campaign).session(session);
+    if (!campaign) throw new ApiError(404, "Campaign not found.");
+    if (campaign.status !== "Active") throw new ApiError(403, "Completed or inactive campaigns are read-only.");
+
+    await assertForm2AReadyToFinalize(form2A, session);
 
     // (Optional enhancement: Validate that total expected teams matches reporting teams before locking)
 
     form2A.status = "Finalized";
-    await form2A.save();
+    form2A.finalizedAt = new Date();
+    await form2A.save({ session });
+    await refreshDraftForm2B(form2A.campaign, campaignDay, form2A.uci, session);
     return form2A;
 };

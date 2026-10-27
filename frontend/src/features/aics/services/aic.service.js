@@ -1,6 +1,10 @@
 import api from "../../../services/api";
 
 export const aicService = {
+  listAICs: async (query, signal) => {
+    const response = await api.get("/aics", { params: query, signal });
+    return response.data;
+  },
   getAICsForUCI: async () => {
     const response = await api.get("/aics");
     return response.data;

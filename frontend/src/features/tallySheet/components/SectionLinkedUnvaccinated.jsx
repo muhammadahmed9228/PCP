@@ -1,8 +1,10 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useFormContext, useFieldArray, useWatch } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 const SectionLinkedUnvaccinated = () => {
   const { control, register } = useFormContext();
+  const { t } = useTranslation();
   
   const households = useWatch({ control, name: "households" }) || [];
 
@@ -28,13 +30,13 @@ const SectionLinkedUnvaccinated = () => {
       {/* SECTION 10: Unvaccinated Children */}
       {validUnvaccHouses.length === 0 ? (
         <div className="bg-gray-50 p-4 text-gray-500 rounded border">
-          No unvaccinated house children reported in Section 6. (Section 10 hidden)
+          {t("noUnvaccinatedHouseChildren")}
         </div>
       ) : (
         <div>
           <div className="flex justify-between items-center border-b pb-2 mb-4">
             <h3 className="text-lg font-semibold text-red-700">
-              Section 10: Unvaccinated Children & Same-Day Catch-Up (Linked)
+              {t("section10Unvaccinated")}
             </h3>
             <button
               type="button"
@@ -51,22 +53,22 @@ const SectionLinkedUnvaccinated = () => {
               }
               className="bg-red-600 text-white px-3 py-1 text-sm rounded hover:bg-red-700"
             >
-              + Add Child Record
+              + {t("addChildRecord")}
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border">
               <thead className="bg-red-50">
                 <tr>
-                  <th className="p-2 border">House No</th>
-                  <th className="p-2 border">Child Name</th>
-                  <th className="p-2 border">Age Group</th>
-                  <th className="p-2 border">Exact Age</th>
-                  <th className="p-2 border">Father Name</th>
-                  <th className="p-2 border">Reason</th>
-                  <th className="p-2 border bg-green-50 text-green-900">Covered Same-Day?</th>
-                  <th className="p-2 border">Return Date</th>
-                  <th className="p-2 border">Next Vacc Date</th>
+                  <th className="p-2 border">{t("houseNo")}</th>
+                  <th className="p-2 border">{t("childName")}</th>
+                  <th className="p-2 border">{t("ageGroup")}</th>
+                  <th className="p-2 border">{t("exactAge")}</th>
+                  <th className="p-2 border">{t("fatherName")}</th>
+                  <th className="p-2 border">{t("reason")}</th>
+                  <th className="p-2 border bg-green-50 text-green-900">{t("coveredSameDay")}</th>
+                  <th className="p-2 border">{t("returnDate")}</th>
+                  <th className="p-2 border">{t("nextVaccDate")}</th>
                   <th className="p-2 border">X</th>
                 </tr>
               </thead>
@@ -79,10 +81,10 @@ const SectionLinkedUnvaccinated = () => {
                         className="w-full px-1 py-1 border bg-white"
                         required
                       >
-                        <option value="">Select House...</option>
+                        <option value="">{t("selectHouse")}</option>
                         {validUnvaccHouses.map((h) => (
                           <option key={h.houseNo} value={h.houseNo}>
-                            House {h.houseNo}
+                            {t("house")} {h.houseNo}
                           </option>
                         ))}
                       </select>
@@ -106,7 +108,7 @@ const SectionLinkedUnvaccinated = () => {
                     </td>
                     <td className="p-2 border">
                       <input
-                        placeholder="e.g. 6m / 3y"
+                        placeholder={t("ageExample")}
                         {...register(`unvaccinatedChildren.${idx}.age`)}
                         className="w-20 px-1 py-1 border"
                         required
@@ -169,11 +171,11 @@ const SectionLinkedUnvaccinated = () => {
 
       {/* SECTION 11: Refused/Absent Guests */}
       {validGuestUnvaccHouses.length === 0 ? (
-        <div className="bg-gray-50 p-4 text-gray-500 rounded border">No unvaccinated guests reported in Section 6. (Section 11 hidden)</div>
+        <div className="bg-gray-50 p-4 text-gray-500 rounded border">{t("noUnvaccinatedGuests")}</div>
       ) : (
         <div>
           <div className="flex justify-between items-center border-b pb-2 mb-4">
-            <h3 className="text-lg font-semibold text-orange-700">Section 11: Refused / Absent Guest Children (Linked)</h3>
+            <h3 className="text-lg font-semibold text-orange-700">{t("section11Guests")}</h3>
             <button
               type="button"
               onClick={() =>
@@ -187,17 +189,17 @@ const SectionLinkedUnvaccinated = () => {
               }
               className="bg-orange-600 text-white px-3 py-1 text-sm rounded hover:bg-orange-700"
             >
-              + Add Guest Record
+              + {t("addGuestRecord")}
             </button>
           </div>
           <table className="min-w-full text-sm border">
             <thead className="bg-orange-50">
               <tr>
-                <th className="p-2 border">House No (Dropdown)</th>
-                <th className="p-2 border">Child Name</th>
-                <th className="p-2 border">Age</th>
-                <th className="p-2 border">Father Name</th>
-                <th className="p-2 border">Reason</th>
+                <th className="p-2 border">{t("houseDropdown")}</th>
+                <th className="p-2 border">{t("childName")}</th>
+                <th className="p-2 border">{t("age")}</th>
+                <th className="p-2 border">{t("fatherName")}</th>
+                <th className="p-2 border">{t("reason")}</th>
                 <th className="p-2 border">X</th>
               </tr>
             </thead>

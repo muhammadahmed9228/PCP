@@ -1,6 +1,10 @@
 import api from "../../../services/api";
 
 export const campaignService = {
+  listCampaigns: async (query, signal) => {
+    const response = await api.get("/campaigns", { params: query, signal });
+    return response.data;
+  },
   getAllCampaigns: async () => {
     const response = await api.get("/campaigns");
     return response.data;
@@ -19,6 +23,14 @@ export const campaignService = {
   },
   updateCampaignStatus: async (id, status) => {
     const response = await api.patch(`/campaigns/${id}/status`, { status });
+    return response.data;
+  },
+  completeCampaign: async (id) => {
+    const response = await api.patch(`/campaigns/${id}/complete`);
+    return response.data;
+  },
+  getCompletionReadiness: async (id) => {
+    const response = await api.get(`/campaigns/${id}/completion-readiness`);
     return response.data;
   },
 };

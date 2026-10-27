@@ -2,6 +2,17 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from "../services/auth.service";
 import { toast } from "react-toastify";
 
+const readStoredAuth = () => {
+  if (typeof window === "undefined") return null;
+  try { return JSON.parse(window.localStorage.getItem("pcp-auth") || "null"); } catch { return null; }
+};
+
+const storedAuth = readStoredAuth();
+
+const persistAuth = (state) => {
+  if (typeof window !== "undefined") window.localStorage.setItem("pcp-auth", JSON.stringify({ user: state.user, accessToken: state.accessToken }));
+};
+
 // RTK Async Thunk for asynchronous operations where required[cite: 1]
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
@@ -67,9 +78,9 @@ export const loginTeamUser = createAsyncThunk(
 );
 // Make sure to add .addCase(loginTeamUser.fulfilled, ...) to extraReducers exactly like the others.
 const initialState = {
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
+  user: storedAuth?.user || null,
+  accessToken: storedAuth?.accessToken || null,
+  isAuthenticated: Boolean(storedAuth?.user),
   loading: false,
   error: null,
 };
@@ -78,6 +89,9 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
     // Separate UI state from persistent state[cite: 1]
     clearError: (state) => {
       state.error = null;
@@ -94,6 +108,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        persistAuth(state);
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -103,6 +118,7 @@ const authSlice = createSlice({
         state.user = null;
         state.accessToken = null;
         state.isAuthenticated = false;
+        if (typeof window !== "undefined") window.localStorage.removeItem("pcp-auth");
       })
       .addCase(loginAicUser.pending, (state) => {
         state.loading = true;
@@ -113,6 +129,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        persistAuth(state);
       })
       .addCase(loginAicUser.rejected, (state, action) => {
         state.loading = false;
@@ -127,6 +144,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        persistAuth(state);
       })
       .addCase(loginTeamUser.rejected, (state, action) => {
         state.loading = false;
@@ -138,5 +156,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, setUser } = authSlice.actions;
 export default authSlice.reducer;

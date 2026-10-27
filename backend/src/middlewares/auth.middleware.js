@@ -36,3 +36,10 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
         throw new ApiError(401, error?.message || "Invalid access token");
     }
 });
+
+export const requireRoles = (...roles) => (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+        return next(new ApiError(403, "You are not authorized to perform this action."));
+    }
+    return next();
+};

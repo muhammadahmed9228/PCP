@@ -1,6 +1,7 @@
-import React from "react";
+import { useTranslation } from "react-i18next";
 
 const AmpSnapshot = ({ data }) => {
+  const { t } = useTranslation();
   if (!data) return null;
 
   return (
@@ -9,28 +10,28 @@ const AmpSnapshot = ({ data }) => {
         {/* Section 1: Campaign & SIA */}
         <div className="bg-gray-50 p-4 border rounded shadow-sm">
           <h4 className="font-semibold text-gray-800 border-b pb-2 mb-3">
-            Section 1: Campaign & Area
+            {t("ampSnapshotSection1")}
           </h4>
           <ul className="text-sm space-y-2 text-gray-700">
-            <li><strong>Campaign Name:</strong> {data.campaignName || "N/A"}</li>
-            <li><strong>SIA Name:</strong> {data.sia || "N/A"}</li>
-            <li><strong>Area Number:</strong> {data.areaNo || "N/A"}</li>
-            <li><strong>Area Name:</strong> {data.areaName || "N/A"}</li>
+            <li><strong>{t("campaignName")}:</strong> {data.campaignName || t("notAvailableShort")}</li>
+            <li><strong>{t("teamSiaName")}:</strong> {data.sia || t("notAvailableShort")}</li>
+            <li><strong>{t("areaNumber")}:</strong> {data.areaNo || t("notAvailableShort")}</li>
+            <li><strong>{t("areaName")}:</strong> {data.areaName || t("notAvailableShort")}</li>
           </ul>
         </div>
 
         {/* Section 2: Administrative Geography */}
         <div className="bg-gray-50 p-4 border rounded shadow-sm">
           <h4 className="font-semibold text-gray-800 border-b pb-2 mb-3">
-            Section 2: Location & UC Details
+            {t("ampSnapshotSection2")}
           </h4>
           <ul className="text-sm space-y-2 text-gray-700">
-            <li><strong>District:</strong> {data.district || "N/A"}</li>
-            <li><strong>Tehsil/Town:</strong> {data.tehsil || "N/A"}</li>
-            <li><strong>UC Name:</strong> {data.ucName || "N/A"}</li>
-            <li><strong>UC Number:</strong> {data.ucNumber || "N/A"}</li>
+            <li><strong>{t("district")}:</strong> {data.district || t("notAvailableShort")}</li>
+            <li><strong>{t("townTehsil")}:</strong> {data.tehsil || t("notAvailableShort")}</li>
+            <li><strong>{t("ucName")}:</strong> {data.ucName || t("notAvailableShort")}</li>
+            <li><strong>{t("ucNumber")}:</strong> {data.ucNumber || t("notAvailableShort")}</li>
             <li className="pt-1 border-t text-xs text-gray-500">
-              <strong>UCI:</strong> {data.uciName || "N/A"} ({data.uciNo || "N/A"})
+              <strong>{t("uci")}:</strong> {data.uciName || t("notAvailableShort")} ({data.uciNo || t("notAvailableShort")})
             </li>
           </ul>
         </div>
@@ -38,13 +39,13 @@ const AmpSnapshot = ({ data }) => {
         {/* Section 3: AIC Snapshot Info */}
         <div className="bg-blue-50 p-4 border border-blue-200 rounded shadow-sm">
           <h4 className="font-semibold text-blue-900 border-b border-blue-200 pb-2 mb-3">
-            Section 3: AIC Personnel Details
+            {t("ampSnapshotSection3")}
           </h4>
           <ul className="text-sm space-y-2 text-blue-950">
-            <li><strong>AIC Name:</strong> {data.aicName || "N/A"}</li>
-            <li><strong>Phone Number:</strong> {data.aicPhoneNo || "N/A"}</li>
-            <li><strong>Gender:</strong> {data.aicGender || "N/A"}</li>
-            <li><strong>Govt Employee:</strong> {data.isGovtEmployee ? "Yes" : "No"}</li>
+            <li><strong>{t("aicName")}:</strong> {data.aicName || t("notAvailableShort")}</li>
+            <li><strong>{t("phoneNumber")}:</strong> {data.aicPhoneNo || t("notAvailableShort")}</li>
+            <li><strong>{t("gender")}:</strong> {data.aicGender ? t(data.aicGender.toLowerCase()) : t("notAvailableShort")}</li>
+            <li><strong>{t("governmentEmployee")}:</strong> {data.isGovtEmployee ? t("yes") : t("no")}</li>
           </ul>
         </div>
       </div>

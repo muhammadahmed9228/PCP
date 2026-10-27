@@ -1,15 +1,20 @@
 import { Router } from "express";
-import { verifyJWT } from "../../middlewares/auth.middleware.js";
-import { saveDraft, finalize, getAMP } from "./amp.controller.js";
+import { verifyJWT, requireRoles } from "../../middlewares/auth.middleware.js";
+import { saveDraft, finalize, getAMP, listReviews, getReview, approve, reopen } from "./amp.controller.js";
 
 const router = Router();
-router.use(verifyJWT); // Ensure AIC is authenticated[cite: 1]
+router.use(verifyJWT);
+
+router.get("/reviews/campaign/:campaignId", requireRoles("UCI"), listReviews);
+router.get("/reviews/area/:areaId", requireRoles("UCI"), getReview);
+router.patch("/reviews/area/:areaId/approve", requireRoles("UCI"), approve);
+router.patch("/reviews/area/:areaId/reopen", requireRoles("UCI"), reopen);
 
 router.route("/area/:areaId")
-    .get(getAMP)
-    .post(saveDraft);
+    .get(requireRoles("AIC"), getAMP)
+    .post(requireRoles("AIC"), saveDraft);
 
 router.route("/area/:areaId/finalize")
-    .patch(finalize);
+    .patch(requireRoles("AIC"), finalize);
 
 export default router;

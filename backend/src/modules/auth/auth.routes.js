@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUCI, loginUCI, logoutUCI } from "./auth.controller.js";
+import { registerUCI, loginUCI, logoutUCI, getCurrentUser, updateCurrentProfile } from "./auth.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 import { loginAIC, logoutAIC } from "./auth.controller.js";
 import { loginTeam, logoutTeam } from "./auth.controller.js";
@@ -11,6 +11,8 @@ router.route("/uci/login").post(loginUCI);
 
 // Secured routes
 router.route("/uci/logout").post(verifyJWT, logoutUCI);
+router.route("/me").get(verifyJWT, getCurrentUser);
+router.route("/profile").patch(verifyJWT, updateCurrentProfile);
 
 
 // Public AIC Route

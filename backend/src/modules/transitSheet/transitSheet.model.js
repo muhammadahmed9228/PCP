@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ApiError } from "../../utils/ApiError.js";
+import { validateLogisticsConservation } from "../shared/sheetInvariants.js";
 
 const transitSheetSchema = new mongoose.Schema(
     {
@@ -12,6 +13,10 @@ const transitSheetSchema = new mongoose.Schema(
         team: { type: mongoose.Schema.Types.ObjectId, ref: "Team", required: true }, // Must be Transit
         campaignDay: { type: Number, required: true, min: 1, max: 7 },
         status: { type: String, enum: ["Draft", "Finalized"], default: "Draft" },
+        finalizedAt: { type: Date },
+        reopenedBy: { type: mongoose.Schema.Types.ObjectId, ref: "AIC" },
+        reopenReason: { type: String, trim: true, maxlength: 500 },
+        reopenedAt: { type: Date },
 
         // Sections 1-4: Snapshot Auto-populated Info
         snapshot: {
@@ -65,6 +70,9 @@ transitSheetSchema.index({ campaign: 1, team: 1, campaignDay: 1 }, { unique: tru
 // Pre-Save Hook for Auto-Calculations
 transitSheetSchema.pre("save", function (next) {
     this.summary.totalVaccinated = this.vaccinatedChildrenCount || 0;
+    if (this.status === "Finalized") {
+        validateLogisticsConservation(this.logistics, "Transit Sheet");
+    }
      if (typeof next === "function") next();
 });
 

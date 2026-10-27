@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { verifyJWT } from "../../middlewares/auth.middleware.js";
-import { saveDraft, getFixedSheet, finalize } from "./fixedSheet.controller.js";
+import { verifyJWT, requireRoles } from "../../middlewares/auth.middleware.js";
+import { saveDraft, getFixedSheet, finalize, reopen } from "./fixedSheet.controller.js";
 
 const router = Router();
-router.use(verifyJWT); // Secure for Field Teams
+router.use(verifyJWT, requireRoles("AIC", "FieldTeam"));
 
 router.route("/team/:teamId/day/:day")
     .get(getFixedSheet)
@@ -11,5 +11,8 @@ router.route("/team/:teamId/day/:day")
 
 router.route("/team/:teamId/day/:day/finalize")
     .patch(finalize);
+
+router.route("/team/:teamId/day/:day/reopen")
+    .patch(requireRoles("AIC"), reopen);
 
 export default router;

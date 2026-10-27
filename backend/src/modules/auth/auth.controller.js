@@ -7,6 +7,22 @@ import { AIC } from "../users/aic.model.js";
 import { Team } from "../teams/team.model.js";
 import jwt from "jsonwebtoken";
 
+export const getCurrentUser = asyncHandler(async (req, res) => {
+  return res.status(200).json(new ApiResponse(200, req.user, "Profile retrieved successfully"));
+});
+
+export const updateCurrentProfile = asyncHandler(async (req, res) => {
+  if (req.user.role !== "UCI") throw new ApiError(403, "Only UCI users can update their own profile");
+  const allowedFields = ["uciNo", "uciName", "phoneNumber", "gender", "isGovtEmployee", "ucNumber", "ucName", "province", "district", "townTehsil"];
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) req.user[field] = req.body[field];
+  });
+  if (req.body.password?.trim()) req.user.password = req.body.password.trim();
+  await req.user.save();
+  const updatedUser = await UCI.findById(req.user._id).select("-password -refreshToken");
+  return res.status(200).json(new ApiResponse(200, updatedUser, "Profile updated successfully"));
+});
+
 export const registerUCI = asyncHandler(async (req, res) => {
   const {
     uciNo, uciName, username, password, phoneNumber, 

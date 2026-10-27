@@ -34,6 +34,7 @@ const TeamLoginPage = () => {
             {loading ? "Signing in..." : "Start Shift"}
           </button>
         </form>
+        <a href="/field-work" className="block text-center text-blue-700 underline mt-4">Open downloaded field sheets / محفوظ شدہ فیلڈ شیٹس</a>
       </div>
     </div>
   );

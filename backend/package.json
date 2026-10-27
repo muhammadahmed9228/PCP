@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate:geography-indexes": "node scripts/migrate-geography-indexes.js",
+    "check:area-aic-assignments": "node scripts/ensure-area-aic-unique.js --check",
+    "migrate:area-aic-unique": "node scripts/ensure-area-aic-unique.js"
   },
   "keywords": [],
   "author": "",
@@ -17,10 +20,12 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
+    "imagekit": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.2"
   },

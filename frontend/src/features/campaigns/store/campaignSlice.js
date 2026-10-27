@@ -59,6 +59,21 @@ export const removeCampaign = createAsyncThunk(
   }
 );
 
+export const completeCampaign = createAsyncThunk(
+  "campaigns/complete",
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await campaignService.completeCampaign(id);
+      toast.success("Campaign completed and moved to Campaign History");
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || "Campaign cannot be completed yet";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const initialState = {
   campaigns: [],
   loading: false,
@@ -103,6 +118,11 @@ const campaignSlice = createSlice({
       .addCase(removeCampaign.fulfilled, (state, action) => {
         state.loading = false;
         state.campaigns = state.campaigns.filter(c => c._id !== action.payload);
+      })
+      .addCase(completeCampaign.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.campaigns.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) state.campaigns[index] = action.payload;
       });
   },
 });

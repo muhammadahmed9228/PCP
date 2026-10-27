@@ -1,5 +1,4 @@
-import React from "react";
-
+import { useTranslation } from "react-i18next";
 const THEMES = {
   indigo: {
     title: "text-indigo-900",
@@ -15,9 +14,10 @@ const THEMES = {
   }
 };
 
-const TeamTable = ({ title, perfs, totals, bgColor = "indigo" }) => {
+const TeamTable = ({ title, perfs, totals, bgColor = "indigo", teamType, onReopenSheet }) => {
+  const { t } = useTranslation();
   if (!perfs || perfs.length === 0) {
-    return <div className="p-4 text-gray-500 italic border rounded">No {title} Teams reported.</div>;
+    return <div className="p-4 text-gray-500 italic border rounded">{t("f2aNoTeamReports", { title })}</div>;
   }
 
   const theme = THEMES[bgColor] || THEMES.indigo;
@@ -29,18 +29,19 @@ const TeamTable = ({ title, perfs, totals, bgColor = "indigo" }) => {
 
   return (
     <div className="mb-8">
-      <h3 className={`text-lg font-bold mb-3 ${theme.title}`}>{title} Teams Daily Performance</h3>
+      <h3 className={`text-lg font-bold mb-3 ${theme.title}`}>{t("f2aTeamPerformance", { title })}</h3>
       <div className="overflow-x-auto border rounded-sm">
         <table className="min-w-full text-sm text-center border-collapse">
           <thead className={theme.header}>
             <tr>
-              <th className="border p-2">Team No</th>
-              <th className="border p-2">Members</th>
-              <th className="border p-2 bg-green-50">Total Vaccinated</th>
-              <th className="border p-2">AFP Notified</th>
-              <th className="border p-2">Zero Dose RI</th>
-              <th className="border p-2">Vaccines Used</th>
-              <th className="border p-2">Markers Used</th>
+              <th className="border p-2">{t("teamNo")}</th>
+              <th className="border p-2">{t("f2aMembers")}</th>
+              <th className="border p-2 bg-green-50">{t("f2aTotalVaccinated")}</th>
+              <th className="border p-2">{t("f2aAfpNotified")}</th>
+              <th className="border p-2">{t("f2aZeroDoseRI")}</th>
+              <th className="border p-2">{t("f2aVaccinesUsed")}</th>
+              <th className="border p-2">{t("f2aMarkersUsed")}</th>
+              {onReopenSheet && <th className="border p-2">{t("actions")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -56,6 +57,7 @@ const TeamTable = ({ title, perfs, totals, bgColor = "indigo" }) => {
                 <td className="border p-2">{p.zeroDoseRI}</td>
                 <td className="border p-2">{p.vaccines?.used || 0}</td>
                 <td className="border p-2">{p.markers?.used || 0}</td>
+                {onReopenSheet && <td className="border p-2"><button type="button" onClick={() => onReopenSheet(p.team, teamType)} className="whitespace-nowrap rounded bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800 hover:bg-orange-200">{t("f2aReopenSheet")}</button></td>}
               </tr>
             ))}
           </tbody>
@@ -64,9 +66,10 @@ const TeamTable = ({ title, perfs, totals, bgColor = "indigo" }) => {
             style={{ backgroundColor: theme.footerBg, color: "#ffffff" }}
           >
             <tr>
-              <td className="border p-2" colSpan="2">TOTALS ({title})</td>
+              <td className="border p-2" colSpan="2">{t("f2aTotals", { title })}</td>
               <td className="border p-2">{totalVaccinated}</td>
-              <td className="border p-2" colSpan="4">Rest aggregated in Inventory Tab</td>
+              <td className="border p-2" colSpan="4">{t("f2aRestInventory")}</td>
+              {onReopenSheet && <td className="border p-2">-</td>}
             </tr>
           </tfoot>
         </table>
@@ -75,21 +78,26 @@ const TeamTable = ({ title, perfs, totals, bgColor = "indigo" }) => {
   );
 };
 
-const Form2AFixedTransit = ({ data }) => {
+const Form2AFixedTransit = ({ data, onReopenSheet }) => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <TeamTable 
-        title="Section 6: Fixed" 
+        title={t("f2aFixedSection")} 
         perfs={data.fixedPerformances} 
         totals={data.aggregatedFixedTotals} 
         bgColor="indigo" 
+        teamType="fixed"
+        onReopenSheet={onReopenSheet}
       />
       
       <TeamTable 
-        title="Section 7: Transit" 
+        title={t("f2aTransitSection")} 
         perfs={data.transitPerformances} 
         totals={data.aggregatedTransitTotals} 
         bgColor="teal" 
+        teamType="transit"
+        onReopenSheet={onReopenSheet}
       />
     </div>
   );

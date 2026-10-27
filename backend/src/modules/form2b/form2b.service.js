@@ -3,6 +3,11 @@ import { Form2A } from "../form2a/form2a.model.js";
 import { Campaign } from "../campaigns/campaign.model.js";
 import { UCI } from "../users/uci.model.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { validateReopenReason } from "../../utils/reopenReason.js";
+import { assertForm2BReadyToFinalize } from "../completion/completion.service.js";
+import { withMongoTransaction } from "../../utils/mongoTransaction.js";
+
+const withSession = (query, session) => (session ? query.session(session) : query);
 
 // --- Helper: Sum Vitamin A objects safely ---
 const createEmptyVitA = () => ({
@@ -134,32 +139,35 @@ const rollUpFixedTransitRows = (rows, label = "UC TOTAL") => {
 };
 
 // --- Primary Service: Generate or Update Form 2B Draft ---
-export const generateOrUpdateForm2BDraft = async (campaignId, campaignDay, uciId) => {
+export const generateOrUpdateForm2BDraft = async (campaignId, campaignDay, uciId, session = null) => {
     // 1. Validate Campaign & UCI ownership
-    const campaign = await Campaign.findOne({ _id: campaignId, uci: uciId });
+    const campaign = await withSession(Campaign.findOne({ _id: campaignId, uci: uciId }), session);
     if (!campaign) {
         throw new ApiError(404, "Campaign not found or unauthorized.");
     }
-    if (campaign.status !== "Active") {
-        throw new ApiError(400, "Form 2B can only be generated when the Campaign is 'Active'.");
-    }
 
-    const uci = await UCI.findById(uciId);
+    const uci = await withSession(UCI.findById(uciId), session);
     if (!uci) throw new ApiError(404, "UCI profile not found.");
 
     // 2. If already Finalized, return locked document without overwriting
-    let existingForm2B = await Form2B.findOne({ campaign: campaignId, uci: uciId, campaignDay });
+    let existingForm2B = await withSession(Form2B.findOne({ campaign: campaignId, uci: uciId, campaignDay }), session);
     if (existingForm2B && existingForm2B.status === "Finalized") {
         return existingForm2B;
     }
 
+    // Completed campaigns are historical and may only expose an already-finalized
+    // Form 2B. They must never generate or overwrite a draft.
+    if (campaign.status !== "Active") {
+        throw new ApiError(400, "Form 2B can only be generated when the Campaign is 'Active'.");
+    }
+
     // 3. Query all Finalized Form 2As for this UCI, Campaign, and Day
-    const finalizedForm2As = await Form2A.find({
+    const finalizedForm2As = await withSession(Form2A.find({
         campaign: campaignId,
         uci: uciId,
         campaignDay,
         status: "Finalized"
-    });
+    }), session);
 
     // 4. Aggregate Section 4: Team & AIC Counts
     let totalMobileTeams = 0;
@@ -279,17 +287,41 @@ export const generateOrUpdateForm2BDraft = async (campaignId, campaignDay, uciId
     };
 
     if (existingForm2B) {
-        existingForm2B = await Form2B.findByIdAndUpdate(existingForm2B._id, dataToSave, { new: true });
+        existingForm2B = await Form2B.findByIdAndUpdate(existingForm2B._id, dataToSave, { new: true, session });
     } else {
-        existingForm2B = await Form2B.create(dataToSave);
+        if (session) {
+            [existingForm2B] = await Form2B.create([dataToSave], { session });
+        } else {
+            existingForm2B = await Form2B.create(dataToSave);
+        }
     }
 
     return existingForm2B;
 };
 
+export const refreshDraftForm2B = async (campaignId, campaignDay, uciId, session = null) => {
+    const form2B = await withSession(
+        Form2B.findOne({ campaign: campaignId, uci: uciId, campaignDay }),
+        session
+    );
+
+    if (!form2B || form2B.status !== "Draft") return form2B;
+    return generateOrUpdateForm2BDraft(campaignId, campaignDay, uciId, session);
+};
+
 // --- Finalize Form 2B ---
-export const finalizeForm2B = async (campaignId, campaignDay, uciId) => {
-    const form2B = await Form2B.findOne({ campaign: campaignId, uci: uciId, campaignDay });
+export const finalizeForm2B = async (campaignId, campaignDay, uciId, session = null) => {
+    if (!session) {
+        return withMongoTransaction((transactionSession) =>
+            finalizeForm2B(campaignId, campaignDay, uciId, transactionSession)
+        );
+    }
+
+    const campaign = await Campaign.findOne({ _id: campaignId, uci: uciId }).session(session);
+    if (!campaign) throw new ApiError(404, "Campaign not found or unauthorized.");
+    if (campaign.status !== "Active") throw new ApiError(403, "Completed or inactive campaigns are read-only.");
+
+    const form2B = await Form2B.findOne({ campaign: campaignId, uci: uciId, campaignDay }).session(session);
     if (!form2B) throw new ApiError(404, "Form 2B draft not found. Please generate it first.");
     if (form2B.status === "Finalized") throw new ApiError(400, "Form 2B is already finalized.");
 
@@ -297,22 +329,30 @@ export const finalizeForm2B = async (campaignId, campaignDay, uciId) => {
         throw new ApiError(400, "Cannot finalize Form 2B: Zero AICs have finalized their Form 2A for this day.");
     }
 
+    await assertForm2BReadyToFinalize(form2B, session);
+
     form2B.status = "Finalized";
     form2B.finalizedAt = new Date();
-    await form2B.save();
+    await form2B.save({ session });
 
     return form2B;
 };
 
 // --- Authorized Reopening (Form 2B or an AIC's Form 2A) ---
 export const reopenForm2B = async (campaignId, campaignDay, uciId, reason) => {
+    const normalizedReason = validateReopenReason(reason);
+    const campaign = await Campaign.findOne({ _id: campaignId, uci: uciId });
+    if (!campaign) throw new ApiError(404, "Campaign not found or unauthorized.");
+    if (campaign.status === "Completed") throw new ApiError(403, "Completed campaigns are read-only.");
     const form2B = await Form2B.findOne({ campaign: campaignId, uci: uciId, campaignDay });
     if (!form2B) throw new ApiError(404, "Form 2B not found.");
     if (form2B.status !== "Finalized") throw new ApiError(400, "Form 2B is already in Draft status.");
 
     form2B.status = "Draft";
+    form2B.reopenedBy = uciId;
     form2B.reopenedAt = new Date();
-    form2B.reopenReason = reason || "Reopened by UCI for corrections";
+    form2B.reopenReason = normalizedReason;
+    form2B.finalizedAt = undefined;
     await form2B.save();
 
     return form2B;

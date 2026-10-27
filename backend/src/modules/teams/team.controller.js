@@ -1,6 +1,6 @@
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
-import { createTeam, getAicTeams, assignTeam } from "./team.service.js";
+import { createTeam, getAicTeams, assignTeam, updateAicTeam, deleteAicTeam } from "./team.service.js";
 
 export const registerTeam = asyncHandler(async (req, res) => {
     const team = await createTeam(req.body, req.user._id);
@@ -9,7 +9,7 @@ export const registerTeam = asyncHandler(async (req, res) => {
 });
 
 export const getTeams = asyncHandler(async (req, res) => {
-    const teams = await getAicTeams(req.user._id);
+    const teams = await getAicTeams(req.user._id, req.query);
     return res.status(200).json(new ApiResponse(200, teams, "Teams retrieved successfully"));
 });
 
@@ -17,4 +17,14 @@ export const assignToCampaign = asyncHandler(async (req, res) => {
     const { campaignId, teamId } = req.body;
     await assignTeam(campaignId, teamId, req.user._id);
     return res.status(200).json(new ApiResponse(200, {}, "Team assigned to campaign successfully"));
+});
+
+export const updateTeam = asyncHandler(async (req, res) => {
+    const team = await updateAicTeam(req.params.id, req.body, req.user._id);
+    return res.status(200).json(new ApiResponse(200, team, "Team updated successfully"));
+});
+
+export const deleteTeam = asyncHandler(async (req, res) => {
+    const result = await deleteAicTeam(req.params.id, req.user._id);
+    return res.status(200).json(new ApiResponse(200, result, "Team deleted successfully"));
 });

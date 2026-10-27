@@ -1,6 +1,10 @@
 import api from "../../../services/api";
 
 export const areaService = {
+  listAreasForCampaign: async (campaignId, query, signal) => {
+    const response = await api.get(`/areas/campaign/${campaignId}`, { params: query, signal });
+    return response.data;
+  },
   createAreaAndAssign: async (areaData) => {
     const response = await api.post("/areas", areaData);
     return response.data;

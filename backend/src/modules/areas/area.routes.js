@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT } from "../../middlewares/auth.middleware.js";
+import { verifyJWT, requireRoles } from "../../middlewares/auth.middleware.js";
 import { 
     createAreaAndAssign, 
     getAreasForCampaign, 
@@ -10,7 +10,7 @@ import {
 const router = Router();
 
 // Secure routes with UCI authentication[cite: 1]
-router.use(verifyJWT);
+router.use(verifyJWT, requireRoles("UCI"));
 
 router.route("/").post(createAreaAndAssign);
 router.route("/campaign/:campaignId").get(getAreasForCampaign);

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import i18n from '../i18n/i18n';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
@@ -10,6 +11,7 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (axios.isCancel(error)) return Promise.reject(error);
     const originalRequest = error.config;
     const status = error.response?.status;
     const requestUrl = originalRequest?.url || '';
@@ -21,7 +23,7 @@ api.interceptors.response.use(
     if (status === 401) {
       // Skip redirection if we are already on the login page or hitting auth routes
       if (!isAuthRoute && window.location.pathname !== '/login') {
-        toast.error('Session expired. Please log in again.');
+        toast.error(i18n.t('sessionExpired'));
         window.location.href = '/login';
         return Promise.reject(error);
       }
@@ -29,7 +31,7 @@ api.interceptors.response.use(
 
     // Show generic error toasts for other errors (skip if it's an expected auth check)
     if (!isAuthRoute) {
-      const message = error.response?.data?.message || 'An unexpected error occurred';
+      const message = error.response?.data?.message || i18n.t('unexpectedError');
       toast.error(message);
     }
 

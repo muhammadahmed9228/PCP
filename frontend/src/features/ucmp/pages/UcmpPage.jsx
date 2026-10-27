@@ -1,12 +1,16 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm, FormProvider } from "react-hook-form";
 import { fetchCampaigns } from "../../campaigns/store/campaignSlice";
 import { fetchUcmp, saveUcmpDraft, finalizeUcmp, clearUcmp } from "../store/ucmpSlice";
 import { TabAdminPrep, TabPopulationsTeams, TabLogistics, TabSocial } from "../components/UcmpFormTabs";
+import ExportExcelButton from "../../../components/shared/ExportExcelButton";
+import "../../../i18n/i18n";
+import { useTranslation } from "react-i18next";
 
 const UcmpPage = () => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { campaigns } = useSelector((state) => state.campaigns);
   const { data: ucmpData, loading } = useSelector((state) => state.ucmp);
   
@@ -50,45 +54,48 @@ const UcmpPage = () => {
   };
 
   const handleFinalize = async () => {
-    if (window.confirm("Are you sure? Once finalized, the UCMP is locked and cannot be edited.")) {
+    if (window.confirm(t("finalizeUcmpConfirm"))) {
       await dispatch(finalizeUcmp(selectedCampaignId));
     }
   };
 
   const tabs = [
-    { label: "Admin & Pre-campaign", component: <TabAdminPrep user={user} campaign={selectedCampaign} /> },
-    { label: "Populations & Teams", component: <TabPopulationsTeams /> },
-    { label: "Logistics & Supplies", component: <TabLogistics /> },
-    { label: "Social & Wrap-up", component: <TabSocial /> }
+    { label: t("ucmpAdminTab"), component: <TabAdminPrep user={user} campaign={selectedCampaign} /> },
+    { label: t("ucmpPopulationTab"), component: <TabPopulationsTeams /> },
+    { label: t("ucmpLogisticsTab"), component: <TabLogistics /> },
+    { label: t("ucmpSocialTab"), component: <TabSocial /> }
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">Union Council Micro Plan (UCMP)</h2>
-        <select
-          value={selectedCampaignId}
-          onChange={(e) => setSelectedCampaignId(e.target.value)}
-          className="block w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-        >
-          <option value="">-- Select Campaign --</option>
-          {campaigns.map((camp) => (
-            <option key={camp._id} value={camp._id}>{camp.campaignName}</option>
-          ))}
-        </select>
+        <h2 className="text-2xl font-bold text-gray-800">{t("unionCouncilMicroPlan")}</h2>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedCampaignId}
+            onChange={(e) => setSelectedCampaignId(e.target.value)}
+            className="block w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+          >
+          <option value="">{t("selectCampaign")}</option>
+            {campaigns.map((camp) => (
+              <option key={camp._id} value={camp._id}>{camp.campaignName}</option>
+            ))}
+          </select>
+          <ExportExcelButton collectionName="ucmp" data={ucmpData} disabled={!ucmpData} />
+        </div>
       </div>
 
       {!selectedCampaignId ? (
-        <div className="bg-white p-8 text-center rounded-lg shadow border"><p className="text-gray-500">Select a campaign to manage its UCMP.</p></div>
+        <div className="bg-white p-8 text-center rounded-lg shadow border"><p className="text-gray-500">{t("selectCampaignUcmpHint")}</p></div>
       ) : (
         <div className="bg-white shadow rounded-lg flex flex-col">
           
           {/* Status Banner */}
           <div className={`px-6 py-3 border-b flex justify-between items-center ${isFinalized ? "bg-red-50 text-red-800" : "bg-blue-50 text-blue-800"}`}>
             <span className="font-semibold">
-              Status: {ucmpData?.status || "No Draft Yet"}
+              {t("status")}: {ucmpData?.status || t("noDraftYet")}
             </span>
-            {isFinalized && <span className="text-sm font-medium">Locked (Read-Only)</span>}
+            {isFinalized && <span className="text-sm font-medium">{t("lockedReadOnly")}</span>}
           </div>
 
           {/* Form Provider Wraps the entire multi-tab structure[span_3](start_span)[span_3](end_span) */}
@@ -122,7 +129,7 @@ const UcmpPage = () => {
               {/* Action Buttons */}
               <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
                 <span className="text-sm text-gray-500">
-                  {!isPlanningPhase && !isFinalized ? "Campaign must be in Planning phase to edit." : ""}
+                  {!isPlanningPhase && !isFinalized ? t("planningPhaseRequired") : ""}
                 </span>
                 <div className="flex gap-4">
                   <button
@@ -130,7 +137,7 @@ const UcmpPage = () => {
                     disabled={isFinalized || loading || !isPlanningPhase}
                     className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                   >
-                    {loading ? "Saving..." : "Save Draft"}
+                    {loading ? t("saving") : t("saveDraft")}
                   </button>
                   <button
                     type="button"
@@ -138,7 +145,7 @@ const UcmpPage = () => {
                     disabled={isFinalized || !ucmpData?._id || !isPlanningPhase}
                     className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                   >
-                    Finalize & Lock
+                    {t("finalizeLock")}
                   </button>
                 </div>
               </div>
