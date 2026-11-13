@@ -6,6 +6,21 @@ import { AIC } from "../users/aic.model.js";
 import { Route } from "../geography/geography.model.js";
 import { Team } from "../teams/team.model.js";
 import { ApiError } from "../../utils/ApiError.js";
+import mongoose from "mongoose";
+import { calculateTeamOmpTotals, OMP_TOTAL_FIELDS } from "./omp.totals.js";
+
+export const getTeamOmpTotals = async (teamId, campaignId, aicId) => {
+    if (typeof teamId !== 'string' || !mongoose.isObjectIdOrHexString(teamId) || typeof campaignId !== 'string' || !mongoose.isObjectIdOrHexString(campaignId)) {
+        throw new ApiError(400, 'Valid team and campaign IDs are required.');
+    }
+    const team = await Team.findOne({ _id: teamId, registeredBy: aicId, teamType: 'Mobile' }).select('_id teamNo');
+    if (!team) throw new ApiError(404, 'Mobile team not found or unauthorized.');
+    const area = await Area.findOne({ campaign: campaignId, aic: aicId }).select('_id');
+    if (!area) throw new ApiError(404, 'Campaign area not found or unauthorized.');
+    const records = await OMP.find({ team: team._id, campaign: campaignId, area: area._id, aic: aicId, campaignDay: { $in: [1, 2, 3] } })
+        .select(['campaignDay', 'status', ...OMP_TOTAL_FIELDS].join(' ')).lean();
+    return { teamId: team._id, teamNo: team.teamNo, campaignId, ...calculateTeamOmpTotals(records) };
+};
 
 export const saveOMPDraft = async (teamId, campaignDay, routeId, aicId, payload) => {
     // 1. Verify Team

@@ -1,27 +1,7 @@
 import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
-import i18n from "../../i18n/i18n";
-
-const prepareImage = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onerror = () => reject(new Error(i18n.t("imageReadFailed")));
-  reader.onload = () => {
-    const image = new Image();
-    image.onload = () => {
-      const maxSize = 1600;
-      const ratio = Math.min(1, maxSize / Math.max(image.width, image.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.width * ratio));
-      canvas.height = Math.max(1, Math.round(image.height * ratio));
-      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
-    };
-    image.onerror = () => reject(new Error(i18n.t("imageInvalid")));
-    image.src = reader.result;
-  };
-  reader.readAsDataURL(file);
-});
+import { prepareImage } from "../../utils/imageUpload";
 
 const ImageModal = ({ image, label, onClose }) => <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/20 p-4 backdrop-blur-md" onClick={onClose}><div className="relative max-h-full max-w-5xl" onClick={(event) => event.stopPropagation()}><img src={image.url} alt={label} className="max-h-[88vh] max-w-full rounded-2xl object-contain shadow-2xl" /><button type="button" onClick={onClose} className="absolute right-2 top-2 rounded-full bg-white px-3 py-1 text-lg font-bold text-slate-900 shadow">×</button></div></div>;
 

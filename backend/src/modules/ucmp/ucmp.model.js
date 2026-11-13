@@ -50,6 +50,8 @@ const ucmpSchema = new mongoose.Schema(
         totalFixedTeams: { type: Number },
         totalTransitTeams: { type: Number },
         teamsRequiringSpecialAttention: { type: Number },
+        vaccineCarrierRequired: { type: Number },
+        vaccineCarrierAvailable: { type: Number },
 
         // Section 8: Capsules
         vitaminARed: { type: Number },

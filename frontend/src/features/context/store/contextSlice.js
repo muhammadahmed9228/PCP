@@ -29,6 +29,8 @@ const contextSlice = createSlice({
     campaign: null,
     teamType: null,
     assignments: [],
+    enabledDay: null,
+    dayRevision: 0,
     loading: false,
     error: null
   },
@@ -47,6 +49,8 @@ const contextSlice = createSlice({
       state.campaign = null;
       state.teamType = null;
       state.assignments = [];
+      state.enabledDay = null;
+      state.dayRevision = 0;
       state.error = null;
     }
   },
@@ -58,6 +62,9 @@ const contextSlice = createSlice({
       .addCase(bootstrapContext.fulfilled, (state, action) => {
         state.loading = false;
         state.areaId = action.payload.areaId || null;
+        state.error = null;
+        state.enabledDay = action.payload.enabledDay ?? null;
+        state.dayRevision = action.payload.dayRevision || 0;
         state.areaName = action.payload.areaName || null;
         state.areaNo = action.payload.areaNo || null;
         state.uciName = action.payload.uciName || null;

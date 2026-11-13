@@ -1,7 +1,12 @@
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
-import { saveOMPDraft, finalizeOMP, getOMPData } from "./omp.service.js";
+import { saveOMPDraft, finalizeOMP, getOMPData, getTeamOmpTotals } from "./omp.service.js";
 import { ApiError } from "../../utils/ApiError.js";
+
+export const getTotals = asyncHandler(async (req, res) => {
+    const data = await getTeamOmpTotals(req.params.teamId, req.query.campaignId, req.user._id);
+    return res.status(200).json(new ApiResponse(200, data, 'OMP team totals retrieved successfully'));
+});
 
 export const saveDraft = asyncHandler(async (req, res) => {
     const { teamId, day } = req.params;

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { imageAssetSchema } from "../shared/imageAsset.js";
 
 const aicSchema = new mongoose.Schema(
     {
@@ -17,6 +18,7 @@ const aicSchema = new mongoose.Schema(
         phoneNumber: { type: String, required: true, trim: true },
         gender: { type: String, enum: ["Male", "Female"], required: true },
         isGovtEmployee: { type: Boolean, required: true },
+        profileImage: { type: imageAssetSchema },
         role: { type: String, default: "AIC", immutable: true }, // Foundation for RBAC
         // Tracks which UCI registered this AIC so they populate in that UCI's selection list
         registeredBy: { 

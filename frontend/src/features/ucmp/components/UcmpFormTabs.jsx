@@ -1,5 +1,6 @@
 import React from "react";
 import { useFormContext } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 // Tab 1: Sections 1-5 (Admin & Pre-campaign)
 export const TabAdminPrep = ({ user, campaign }) => {
@@ -133,6 +134,7 @@ export const TabAdminPrep = ({ user, campaign }) => {
 // Tab 2: Sections 6-7 (Populations & Teams)
 export const TabPopulationsTeams = () => {
   const { register, watch } = useFormContext();
+  const { t } = useTranslation();
 
   // Dynamic client-side calculation preview (backend remains authoritative[span_1](start_span)[span_1](end_span))
   const b = Number(watch("totalUnder1Year")) || 0;
@@ -223,7 +225,7 @@ export const TabPopulationsTeams = () => {
       <h3 className="text-lg font-semibold border-b pb-2 mt-6">
         Section 7: Teams
       </h3>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="text-sm text-gray-700">Total Mobile</label>
           <input
@@ -248,6 +250,12 @@ export const TabPopulationsTeams = () => {
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
+        {[["teamsRequiringSpecialAttention", "ucmpSpecialAttentionTeams"], ["vaccineCarrierRequired", "ucmpVaccineCarrierRequired"], ["vaccineCarrierAvailable", "ucmpVaccineCarrierAvailable"]].map(([field, label]) => (
+          <div key={field}>
+            <label htmlFor={field} className="text-sm text-gray-700">{t(label)}</label>
+            <input id={field} type="number" min="0" step="1" {...register(field)} className="w-full px-3 py-2 border rounded-md" />
+          </div>
+        ))}
       </div>
     </div>
   );

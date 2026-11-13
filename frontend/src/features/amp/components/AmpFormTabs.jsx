@@ -83,6 +83,7 @@ export const TabAmpLogistics = () => {
         <div><label className="block text-sm text-gray-700">{t("ampTeamsGovt")}</label><input type="number" {...register("mobileGovtPerson")} className="mt-1 w-full px-3 py-2 border rounded-md" /></div>
         <div><label className="block text-sm text-gray-700">{t("ampTeamsFemale")}</label><input type="number" {...register("mobileFemaleMember")} className="mt-1 w-full px-3 py-2 border rounded-md" /></div>
         <div><label className="block text-sm text-gray-700">{t("ampTeamsLocal")}</label><input type="number" {...register("mobileLocalPerson")} className="mt-1 w-full px-3 py-2 border rounded-md" /></div>
+        <div><label htmlFor="ampMigrantMobileChildren" className="block text-sm text-gray-700">{t("ampMigrantMobileChildren")}</label><input id="ampMigrantMobileChildren" type="number" min="0" step="1" {...register("migrantMobileChildren")} className="mt-1 w-full px-3 py-2 border rounded-md" /></div>
         <div>
           <label className="block text-sm text-gray-700">{t("ampBothAdults")}</label>
           <select {...register("bothAdults")} className="mt-1 w-full px-3 py-2 border rounded-md bg-white">

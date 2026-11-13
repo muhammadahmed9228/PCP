@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { exportSheetToExcel } from "../../utils/excelExport";
 
-const ExportExcelButton = ({ collectionName, data, disabled = false }) => {
+const ExportExcelButton = ({ collectionName, data, campaignId, ampId, teamId, disabled = false }) => {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
-    if (!data || isExporting) return;
+    if ((!data && !campaignId) || isExporting) return;
     setIsExporting(true);
     try {
-      await exportSheetToExcel(collectionName, data);
+      await exportSheetToExcel(collectionName, data, campaignId, ampId, teamId);
     } catch (error) {
       toast.error(error.response?.data?.message || t("exportFailed"));
     } finally {

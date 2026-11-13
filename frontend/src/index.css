@@ -3,3 +3,70 @@
 .font-urdu {
   font-family: "Noto Naskh Arabic", "Noto Sans Arabic", sans-serif;
 }
+
+/* Dashboard themes: local tokens let the established component library retain its layout. */
+.portal-theme {
+  --brand-green: #3aaf4a;
+  --brand-lime: #95bd1b;
+  --brand-ink: #111827;
+  --portal-accent: #008c95;
+  --portal-accent-hover: #006f76;
+  --portal-accent-strong: #005c62;
+  --portal-accent-soft: #e7f7f8;
+  --portal-accent-soft-strong: #c8ecef;
+  --portal-accent-text: #005c62;
+  --portal-focus-ring: rgb(0 140 149 / 42%);
+}
+
+.portal-aic {
+  --portal-accent: #173f70;
+  --portal-accent-hover: #12345d;
+  --portal-accent-strong: #0e294a;
+  --portal-accent-soft: #edf3f9;
+  --portal-accent-soft-strong: #d6e4f2;
+  --portal-accent-text: #12345d;
+  --portal-focus-ring: rgb(23 63 112 / 42%);
+}
+
+.portal-field {
+  --portal-accent: #e88724;
+  --portal-accent-hover: #c96f16;
+  --portal-accent-strong: #9f5410;
+  --portal-accent-soft: #fff3e5;
+  --portal-accent-soft-strong: #ffe0bd;
+  --portal-accent-text: #9f5410;
+  --portal-focus-ring: rgb(232 135 36 / 44%);
+}
+
+.portal-theme :is([class~="bg-blue-50"], [class~="bg-blue-50/50"], [class~="bg-blue-50/60"], [class~="bg-blue-50/70"]) { background-color: var(--portal-accent-soft); }
+.portal-theme [class~="bg-blue-100"] { background-color: var(--portal-accent-soft-strong); }
+.portal-theme :is([class~="bg-blue-500"], [class~="bg-blue-600"]) { background-color: var(--portal-accent); }
+.portal-theme [class~="bg-blue-700"] { background-color: var(--portal-accent-hover); }
+.portal-theme :is([class~="bg-blue-800"], [class~="bg-blue-900"]) { background-color: var(--portal-accent-strong); }
+
+.portal-theme :is([class~="text-blue-600"], [class~="text-blue-700"], [class~="text-blue-800"], [class~="text-blue-900"], [class~="text-blue-950"]) { color: var(--portal-accent-text); }
+.portal-theme :is([class~="border-blue-100"], [class~="border-blue-200"], [class~="border-blue-300"], [class~="border-blue-500"], [class~="border-blue-600"], [class~="border-blue-700"]) { border-color: var(--portal-accent-soft-strong); }
+.portal-theme :is([class~="border-b-blue-600"], [class~="border-b-blue-700"]) { border-bottom-color: var(--portal-accent); }
+
+.portal-theme [class~="hover:bg-blue-50"]:hover { background-color: var(--portal-accent-soft); }
+.portal-theme :is([class~="hover:bg-blue-100"], [class~="hover:bg-blue-50/50"], [class~="hover:bg-blue-100/70"]):hover { background-color: var(--portal-accent-soft-strong); }
+.portal-theme [class~="hover:bg-blue-700"]:hover { background-color: var(--portal-accent-hover); }
+.portal-theme [class~="hover:border-blue-300"]:hover { border-color: var(--portal-accent-soft-strong); }
+.portal-theme [class~="hover:border-blue-500"]:hover { border-color: var(--portal-accent); }
+.portal-theme :is([class~="hover:text-blue-700"], [class~="hover:text-blue-900"]):hover { color: var(--portal-accent-strong); }
+.portal-theme .group:hover [class~="group-hover:text-blue-700"] { color: var(--portal-accent-text); }
+
+.portal-theme .portal-scroll-top { background-color: var(--portal-accent); }
+.portal-theme .portal-scroll-top:hover { background-color: var(--portal-accent-hover); }
+.portal-field .portal-scroll-top { color: #111827; }
+
+/* Shared programme states retain the official green rather than borrowing a portal accent. */
+.portal-theme :is([class~="bg-green-600"], [class~="bg-emerald-600"]) { background-color: var(--brand-green); }
+.portal-theme :is([class~="bg-green-700"], [class~="bg-emerald-700"]) { background-color: #278c38; }
+.portal-theme :is([class~="hover:bg-green-700"], [class~="hover:bg-emerald-700"]):hover { background-color: #278c38; }
+.portal-theme :is([class~="text-green-700"], [class~="text-emerald-700"]) { color: #247d32; }
+
+.portal-theme :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid var(--portal-focus-ring);
+  outline-offset: 2px;
+}

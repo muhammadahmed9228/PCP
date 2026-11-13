@@ -18,6 +18,27 @@ const setupArea = t => {
     t.mock.method(Campaign, "findOne", async () => ({ _id: campaignId, uci: uciId, aics: [aicId], status: "Planning", nameOfSIA: "SIA", campaignName: "Campaign" }));
 };
 
+test("migrant and mobile child count is saved, optional, and rejects invalid values", async t => {
+    setupArea(t);
+    t.mock.method(UCI, "findById", async () => ({ _id: uciId }));
+    t.mock.method(AIC, "findById", async () => ({ _id: aicId }));
+    t.mock.method(AMP, "findOne", async () => ({ _id: new mongoose.Types.ObjectId(), aic: aicId, status: "Draft", __v: 0, toObject: () => ({}) }));
+    const update = t.mock.method(AMP, "findOneAndUpdate", async (_filter, change) => change.$set);
+    assert.equal((await saveAMPDraft(areaId, aicId, { migrantMobileChildren: '5' })).migrantMobileChildren, '5');
+    assert.equal((await saveAMPDraft(areaId, aicId, { migrantMobileChildren: '' })).migrantMobileChildren, null);
+    assert.equal(Object.hasOwn(await saveAMPDraft(areaId, aicId, {}), 'migrantMobileChildren'), false);
+    for (const value of [-1, 1.5, true, '1e2']) await assert.rejects(saveAMPDraft(areaId, aicId, { migrantMobileChildren: value }), e => e.statusCode === 400);
+    assert.equal(update.mock.callCount(), 3);
+    const doc = new AMP({ migrantMobileChildren: 0 });
+    assert.equal(doc.migrantMobileChildren, 0);
+    assert.equal(ampValidationError(-1), true);
+    assert.equal(ampValidationError(1.5), true);
+});
+
+function ampValidationError(value) {
+    return Boolean(new AMP({ migrantMobileChildren: value }).validateSync()?.errors.migrantMobileChildren);
+}
+
 test("UCI cannot review another UCI's area", async t => {
     t.mock.method(Area, "findOne", async () => null);
     await assert.rejects(reviewAMP(areaId, uciId, "Approved"), error => error.statusCode === 404);

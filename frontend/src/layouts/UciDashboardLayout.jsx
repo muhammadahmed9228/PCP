@@ -53,13 +53,13 @@ const UciDashboardLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+    <div className="portal-theme portal-uci min-h-screen bg-slate-100 flex flex-col md:flex-row">
       {/* Sidebar */}
-      <div className="w-full md:w-64 bg-blue-700 text-white shadow-md flex flex-col">
-        <div className="p-6 border-b border-blue-600">
+      <div className="w-full md:w-64 bg-[#008C95] text-white shadow-md flex flex-col">
+        <div className="p-6 border-b border-white/20">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-bold text-white">{t("uciPortal")}</h1>
-            <LangToggle variant="sidebar-blue" />
+            <LangToggle variant="sidebar-teal" />
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
@@ -68,8 +68,8 @@ const UciDashboardLayout = () => {
               key={item.key}
               to={item.path}
               className={`block px-4 py-2 rounded-md ${location.pathname === item.path
-                ? "bg-blue-500 text-white font-medium"
-                : "text-blue-50 hover:bg-blue-600"
+                ? "bg-white/20 text-white font-semibold ring-1 ring-inset ring-white/20"
+                : "text-white/90 hover:bg-black/10 hover:text-white"
                 }`}
             >
               {t(item.key)}
@@ -79,7 +79,7 @@ const UciDashboardLayout = () => {
       </div>
 
       {/* Main Content Area */}
-      <main id="uci-dashboard-content" className="min-w-0 flex-1 overflow-y-auto"><DashboardHeader onLogout={handleLogout} showLanguageToggle={false} /><div className="p-4 md:p-8">
+      <main id="uci-dashboard-content" className="min-w-0 flex-1 overflow-y-auto"><DashboardHeader accent="teal" onLogout={handleLogout} showLanguageToggle={false} /><div className="p-4 md:p-8">
         <Routes>
           <Route path="/" element={<CampaignListPage />} />
           <Route path="/history" element={<CampaignHistoryPage />} />

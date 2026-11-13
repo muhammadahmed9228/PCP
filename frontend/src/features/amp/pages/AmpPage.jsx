@@ -90,7 +90,7 @@ const AmpPage = () => {
             onChange={(e) => setCustomAreaId(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md w-72 shadow-sm text-sm"
           />
-          <ExportExcelButton collectionName="amp" data={ampData} disabled={!ampData} />
+          <ExportExcelButton collectionName="amp" campaignId={typeof ampData?.campaign === 'object' ? ampData.campaign?._id : ampData?.campaign} ampId={ampData?._id} disabled={!ampData?._id || loading || String(ampData?.area?._id || ampData?.area || '') !== activeAreaId} />
           <button type="button" disabled={activeAreaId.length !== 24 || submitting} onClick={() => dispatch(fetchAmp(activeAreaId))} className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">{t("ampRefresh")}</button>
         </div>
       </div>

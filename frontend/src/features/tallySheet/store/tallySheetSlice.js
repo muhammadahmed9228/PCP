@@ -64,12 +64,18 @@ const tallySheetSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchTallySheet.pending, (state) => { state.loading = true; })
+      .addCase(fetchTallySheet.pending, (state, action) => {
+        state.loading = true;
+        state.requestId = action.meta.requestId;
+        state.data = null;
+      })
       .addCase(fetchTallySheet.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchTallySheet.rejected, (state) => {
+      .addCase(fetchTallySheet.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.loading = false;
         state.data = null;
       })

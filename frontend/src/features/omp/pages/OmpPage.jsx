@@ -9,6 +9,7 @@ import OmpSnapshot from "../components/OmpSnapshot";
 import { useTranslation } from "react-i18next";
 import "../../../i18n/i18n";
 import ExportExcelButton from "../../../components/shared/ExportExcelButton";
+import OmpTeamTotals from "../components/OmpTeamTotals";
 
 const OmpPage = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,7 @@ const OmpPage = () => {
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [totalsRevision, setTotalsRevision] = useState(0);
 
   const activeAreaId = context?.areaId;
 
@@ -88,12 +90,14 @@ const OmpPage = () => {
     }
     
     const payload = { ...data, routeId: selectedRouteId };
-    await dispatch(saveOmpDraft({ teamId: selectedTeamId, day: selectedDay, data: payload }));
+    const result = await dispatch(saveOmpDraft({ teamId: selectedTeamId, day: selectedDay, data: payload }));
+    if (saveOmpDraft.fulfilled.match(result)) setTotalsRevision(value => value + 1);
   };
 
   const handleFinalize = async () => {
     if (window.confirm(t("finalizeOmpConfirm"))) {
-      await dispatch(finalizeOmp({ teamId: selectedTeamId, day: selectedDay }));
+      const result = await dispatch(finalizeOmp({ teamId: selectedTeamId, day: selectedDay }));
+      if (finalizeOmp.fulfilled.match(result)) setTotalsRevision(value => value + 1);
     }
   };
 
@@ -114,7 +118,7 @@ const OmpPage = () => {
               {t("area")}: <strong className="text-gray-800">{context.areaName} ({context.areaNo})</strong>
             </span>
           )}
-          <ExportExcelButton collectionName="omp" data={ompData} disabled={!ompData} />
+          <ExportExcelButton collectionName="omp" campaignId={context?.campaign?._id} teamId={selectedTeamId} disabled={!selectedTeamId || !context?.campaign?._id} />
         </div>
       </div>
       
@@ -165,6 +169,8 @@ const OmpPage = () => {
           </select>
         </div>
       </div>
+
+      <OmpTeamTotals key={`${selectedTeamId}-${context?.campaign?._id || ''}`} teamId={selectedTeamId} campaignId={context?.campaign?._id} refreshKey={totalsRevision} />
 
       {!selectedTeamId || !selectedDay ? (
         <div className="bg-white p-8 text-center rounded-lg shadow border">

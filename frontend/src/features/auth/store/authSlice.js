@@ -91,6 +91,7 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action) => {
       state.user = action.payload;
+      persistAuth(state);
     },
     // Separate UI state from persistent state[cite: 1]
     clearError: (state) => {

@@ -34,6 +34,7 @@ import form2BRoutes from "./modules/form2b/form2b.routes.js";
 import contextRoutes from "./modules/context/context.routes.js";
 import exportRoutes from "./modules/exports/export.routes.js";
 import imageRoutes from "./modules/images/image.routes.js";
+import fieldDayRoutes from "./modules/fieldDay/fieldDay.routes.js";
 
 // Route Declarations
 app.use("/api/v1/auth", authRoutes);
@@ -53,6 +54,7 @@ app.use("/api/v1/form2b", form2BRoutes);
 app.use("/api/v1/context", contextRoutes);
 app.use("/api/v1/exports", exportRoutes);
 app.use("/api/v1/images", imageRoutes);
+app.use("/api/v1/field-days", fieldDayRoutes);
 
 // Centralized error handling[cite: 1]
 app.use((err, req, res, next) => {

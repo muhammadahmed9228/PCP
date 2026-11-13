@@ -20,6 +20,20 @@ export const saveUCMPDraft = async (campaignId, uciId, payload) => {
         throw new ApiError(403, "UCMP is already finalized and locked[cite: 1]");
     }
 
+    // These optional counts must be non-negative whole numbers when supplied.
+    const section7Counts = {};
+    for (const field of ["teamsRequiringSpecialAttention", "vaccineCarrierRequired", "vaccineCarrierAvailable"]) {
+        if (!Object.hasOwn(payload, field)) continue;
+        const value = payload[field];
+        if (value === "" || value === null || value === undefined) {
+            section7Counts[field] = null;
+        } else if ((typeof value !== "number" && (typeof value !== "string" || !/^\d+$/.test(value))) || !Number.isSafeInteger(Number(value)) || Number(value) < 0) {
+            throw new ApiError(400, `${field} must be a non-negative whole number.`);
+        } else {
+            section7Counts[field] = Number(value);
+        }
+    }
+
     const uci = await UCI.findById(uciId);
 
     // Auto-population snapshot details
@@ -44,6 +58,7 @@ export const saveUCMPDraft = async (campaignId, uciId, payload) => {
 
     const dataToSave = {
         ...payload,
+        ...section7Counts,
         ...autoPopulatedFields,
         totalChildren,
         campaign: campaignId,

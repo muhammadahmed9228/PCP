@@ -5,9 +5,13 @@ import { AIC } from "../users/aic.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { refreshDraftForm2A } from "../form2a/form2a.service.js";
 import { withMongoTransaction } from "../../utils/mongoTransaction.js";
+import { assertEnabledFieldDay } from "../fieldDay/fieldDay.guard.js";
 import { assertTeamActor, resolveTeamAssignment } from "../shared/fieldTeamAssignments.js";
 
-export const saveFixedSheetDraft = async (teamId, campaignDay, pointId, actor, payload) => {
+export const saveFixedSheetDraft = async (teamId, campaignDay, pointId, actor, payload, session = null) => {
+    if (!session) {
+        return withMongoTransaction(transactionSession => saveFixedSheetDraft(teamId, campaignDay, pointId, actor, payload, transactionSession));
+    }
     const editablePayload = { ...payload };
     delete editablePayload.status;
     delete editablePayload.finalizedAt;
@@ -31,8 +35,11 @@ export const saveFixedSheetDraft = async (teamId, campaignDay, pointId, actor, p
         assignmentId: pointId,
         campaignId,
         teamType: "Fixed",
+        session,
         requireAssignmentId: true
     });
+
+    await assertEnabledFieldDay({ assignment: point, campaignDay, actor, session, write: true });
 
     const area = await Area.findById(point.area);
     const uci = await UCI.findById(area.uci);
@@ -44,7 +51,7 @@ export const saveFixedSheetDraft = async (teamId, campaignDay, pointId, actor, p
     }
 
     // 4. Duplicate/Status Check
-    let fixedSheet = await FixedSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id });
+    let fixedSheet = await FixedSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id }).session(session);
     if (fixedSheet && fixedSheet.status === "Finalized") {
         throw new ApiError(403, "This Fixed Sheet is already finalized and locked.");
     }
@@ -86,9 +93,9 @@ export const saveFixedSheetDraft = async (teamId, campaignDay, pointId, actor, p
     };
 
     if (fixedSheet) {
-        fixedSheet = await FixedSheet.findByIdAndUpdate(fixedSheet._id, dataToSave, { new: true, runValidators: true });
+        fixedSheet = await FixedSheet.findByIdAndUpdate(fixedSheet._id, dataToSave, { new: true, runValidators: true, session });
     } else {
-        fixedSheet = await FixedSheet.create(dataToSave);
+        fixedSheet = (await FixedSheet.create([dataToSave], { session }))[0];
     }
 
     return fixedSheet;
@@ -106,6 +113,7 @@ export const getFixedSheetData = async (teamId, campaignDay, pointId, actor, cam
     });
     let fixedSheet = await FixedSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id });
     if (fixedSheet) return fixedSheet;
+    await assertEnabledFieldDay({ assignment: point, campaignDay, actor });
 
     // If draft does not exist yet, build a preview snapshot from the assignment.
     if (point) {
@@ -174,6 +182,7 @@ export const finalizeFixedSheet = async (teamId, campaignDay, actor, campaignId,
         session,
         requireAssignmentId: actor.role === "FieldTeam"
     });
+    await assertEnabledFieldDay({ assignment, campaignDay, actor, session, write: true });
     if (String(fixedSheet.point) !== String(assignment._id) || String(fixedSheet.campaign) !== String(campaign._id)) {
         throw new ApiError(409, "The selected assignment does not match this Fixed Sheet.");
     }

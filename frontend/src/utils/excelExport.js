@@ -6,10 +6,10 @@ const getFilename = (collectionName, disposition) => {
   return `${collectionName}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 };
 
-export const exportSheetToExcel = async (collectionName, data) => {
+export const exportSheetToExcel = async (collectionName, data, campaignId, ampId, teamId) => {
   const response = await api.post(
     "/exports/excel",
-    { collectionName, data },
+    campaignId ? { collectionName, campaignId, ...(ampId ? { ampId } : {}), ...(teamId ? { teamId } : {}) } : { collectionName, data },
     { responseType: "blob" }
   );
   const blobUrl = URL.createObjectURL(response.data);

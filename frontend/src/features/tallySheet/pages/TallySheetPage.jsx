@@ -13,6 +13,8 @@ import TallySheetSnapshot from "../components/TallySheetSnapshot";
 import { useTranslation } from "react-i18next";
 import "../../../i18n/i18n";
 import ExportExcelButton from "../../../components/shared/ExportExcelButton";
+import { useFieldDayAssignment } from "../../fieldDay/useFieldDayAssignment";
+import FieldDayNotice from "../../fieldDay/FieldDayNotice";
 import AssignedGeographyImage from "../../geography/components/AssignedGeographyImage";
 
 const TallySheetPage = () => {
@@ -26,12 +28,17 @@ const TallySheetPage = () => {
     const { user } = useSelector(state => state.auth);
     const isFieldTeam = user?.role === "FieldTeam";
     const isAic = user?.role === "AIC";
+    const dayControl = useFieldDayAssignment("Mobile");
+    const selectedAssignment = dayControl.selectedAssignment;
+    const selectedAssignmentId = selectedAssignment?.assignmentId || "";
 
     // Auto-select team ID if logged in as a Field Team
     const [selectedTeamId, setSelectedTeamId] = useState(isFieldTeam ? user._id : "");
     const [selectedDay, setSelectedDay] = useState("");
-    const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
     const [activeTab, setActiveTab] = useState(1);
+
+    const operationalDay = isFieldTeam ? selectedAssignment?.campaignDay?.toString() || "" : selectedDay;
+    const operationalCampaignId = isFieldTeam ? selectedAssignment?.campaignId : context.campaign?._id;
 
     const methods = useForm({
         defaultValues: sheetData || { households: [], unvaccinatedChildren: [] }
@@ -44,33 +51,31 @@ const TallySheetPage = () => {
     }, [dispatch, isFieldTeam]);
 
     useEffect(() => {
-        const operationalAssignment = (context.assignments || []).find((assignment) => String(assignment.assignmentId) === String(selectedAssignmentId));
-        const operationalDay = isFieldTeam ? operationalAssignment?.campaignDay?.toString() || "" : selectedDay;
         if (selectedTeamId && operationalDay) {
-            dispatch(fetchTallySheet({ teamId: selectedTeamId, day: operationalDay, assignmentId: isFieldTeam ? selectedAssignmentId : undefined, campaignId: isFieldTeam ? operationalAssignment?.campaignId : context.campaign?._id }));
+            dispatch(fetchTallySheet({ teamId: selectedTeamId, day: operationalDay, assignmentId: isFieldTeam ? selectedAssignmentId : undefined, campaignId: operationalCampaignId }));
         } else {
             dispatch(clearTallySheet());
             methods.reset();
         }
-    }, [selectedTeamId, selectedDay, selectedAssignmentId, context.assignments, context.campaign, isFieldTeam, dispatch, methods]);
+    }, [selectedTeamId, operationalDay, selectedAssignmentId, operationalCampaignId, isFieldTeam, dispatch, methods]);
 
     useEffect(() => {
         if (sheetData) methods.reset(sheetData);
     }, [sheetData, methods]);
 
     const isFinalized = sheetData?.status === "Finalized";
+    const sheetReady = !isFieldTeam || (sheetData && String(sheetData.route) === String(selectedAssignmentId) && Number(sheetData.campaignDay) === Number(operationalDay) && String(sheetData.campaign) === String(operationalCampaignId));
     const mobileTeams = teams.filter(t => t.teamType === "Mobile");
-    const fieldAssignments = (context.assignments || []).filter((assignment) => assignment.teamType === "Mobile" && assignment.assignmentType === "Route");
-    const selectedAssignment = fieldAssignments.find((assignment) => String(assignment.assignmentId) === String(selectedAssignmentId));
-    const operationalDay = isFieldTeam ? selectedAssignment?.campaignDay?.toString() || "" : selectedDay;
-    const operationalCampaignId = isFieldTeam ? selectedAssignment?.campaignId : context.campaign?._id;
+
 
     const handleSaveDraft = async (data) => {
+        if (dayControl.readOnly || !sheetReady || loading) return;
         if (!selectedTeamId || !operationalDay) return;
         await dispatch(saveTallySheetDraft({ teamId: selectedTeamId, day: operationalDay, data: { ...data, routeId: isFieldTeam ? selectedAssignmentId : undefined, campaignId: operationalCampaignId } }));
     };
 
     const handleFinalize = async () => {
+        if (dayControl.readOnly || !sheetReady || loading) return;
         if (window.confirm(t("finalizeTallyConfirm"))) {
             await dispatch(finalizeTallySheet({ teamId: selectedTeamId, day: operationalDay, assignmentId: isFieldTeam ? selectedAssignmentId : undefined, campaignId: operationalCampaignId }));
         }
@@ -111,14 +116,7 @@ const TallySheetPage = () => {
                     </div>
                 )}
                 {isFieldTeam ? (
-                    <div className="flex-1 space-y-2">
-                        {fieldAssignments.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">No active route has been assigned to this team yet.</p>}
-                        {fieldAssignments.map((assignment) => {
-                            const isReady = assignment.planningStatus === "Finalized";
-                            const isSelected = String(assignment.assignmentId) === String(selectedAssignmentId);
-                            return <button key={assignment.assignmentId} type="button" disabled={!isReady} onClick={() => setSelectedAssignmentId(assignment.assignmentId)} className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-300"} disabled:cursor-not-allowed disabled:opacity-60`}><span className="flex items-center justify-between gap-3"><span className="font-semibold text-slate-900">Day {assignment.campaignDay} · {assignment.label}</span><span className="text-xs font-semibold text-slate-500">{isReady ? assignment.sheetStatus : "Planning pending"}</span></span><span className="mt-1 block text-xs text-slate-500">{assignment.areaName || "Assigned area"}</span></button>;
-                        })}
-                    </div>
+                    <FieldDayNotice control={dayControl} dirty={methods.formState.isDirty} />
                 ) : <div className="w-full sm:w-40">
                     <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">{t("campaignDay")}</label>
                     <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
@@ -135,7 +133,7 @@ const TallySheetPage = () => {
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center shadow-sm">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl text-slate-500">⌁</div>
                     <p className="font-semibold text-slate-800">Ready when you are</p>
-                    <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">{t("selectDayHint")}</p>
+                    <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">{t(isFieldTeam ? "fieldDayWaitingHint" : "selectDayHint")}</p>
                 </div>
             ) : (
                 <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -156,7 +154,7 @@ const TallySheetPage = () => {
                             </div>
 
                             <div className="p-3 sm:p-6">
-                                <fieldset disabled={isFinalized}>
+                                <fieldset disabled={isFinalized || dayControl.readOnly || !sheetReady || loading}>
                                     {activeTab === 1 && (
                                         <div className="space-y-6">
                                             <TallySheetSnapshot snapshot={sheetData?.snapshot} day={operationalDay} />
@@ -180,10 +178,10 @@ const TallySheetPage = () => {
 
                             <div className="flex flex-col-reverse gap-3 border-t bg-slate-50 p-3 sm:flex-row sm:justify-end sm:p-6">
                                 {isAic && isFinalized && <button type="button" onClick={handleReopen} disabled={loading} className="min-h-11 w-full rounded-xl bg-orange-600 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50 sm:w-auto">Reopen for correction</button>}
-                                <button type="submit" disabled={isFinalized || loading} className="min-h-11 w-full rounded-xl bg-blue-600 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50 sm:w-auto">
+                                <button type="submit" disabled={isFinalized || dayControl.readOnly || !sheetReady || loading} className="min-h-11 w-full rounded-xl bg-blue-600 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50 sm:w-auto">
                                     {loading ? t("saving") : t("saveDraft")}
                                 </button>
-                                <button type="button" onClick={handleFinalize} disabled={isFinalized || !sheetData?._id} className="min-h-11 w-full rounded-xl bg-emerald-600 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50 sm:w-auto">
+                                <button type="button" onClick={handleFinalize} disabled={isFinalized || dayControl.readOnly || !sheetReady || loading || !sheetData?._id} className="min-h-11 w-full rounded-xl bg-emerald-600 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50 sm:w-auto">
                                     {t("validateFinalize")}
                                 </button>
                             </div>

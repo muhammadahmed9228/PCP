@@ -5,9 +5,13 @@ import { AIC } from "../users/aic.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { refreshDraftForm2A } from "../form2a/form2a.service.js";
 import { withMongoTransaction } from "../../utils/mongoTransaction.js";
+import { assertEnabledFieldDay } from "../fieldDay/fieldDay.guard.js";
 import { assertTeamActor, resolveTeamAssignment } from "../shared/fieldTeamAssignments.js";
 
-export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, actor, payload) => {
+export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, actor, payload, session = null) => {
+    if (!session) {
+        return withMongoTransaction(transactionSession => saveTransitSheetDraft(teamId, campaignDay, pointId, actor, payload, transactionSession));
+    }
     const editablePayload = { ...payload };
     delete editablePayload.status;
     delete editablePayload.finalizedAt;
@@ -31,8 +35,11 @@ export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, actor,
         assignmentId: pointId,
         campaignId,
         teamType: "Transit",
+        session,
         requireAssignmentId: true
     });
+
+    await assertEnabledFieldDay({ assignment: point, campaignDay, actor, session, write: true });
 
     const area = await Area.findById(point.area);
     const uci = await UCI.findById(area.uci);
@@ -42,7 +49,7 @@ export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, actor,
         throw new ApiError(403, "Field sheets can only be modified when the Campaign is 'Active'.");
     }
 
-    let transitSheet = await TransitSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id });
+    let transitSheet = await TransitSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id }).session(session);
     if (transitSheet && transitSheet.status === "Finalized") {
         throw new ApiError(403, "This Transit Sheet is already finalized and locked.");
     }
@@ -83,9 +90,9 @@ export const saveTransitSheetDraft = async (teamId, campaignDay, pointId, actor,
     };
 
     if (transitSheet) {
-        transitSheet = await TransitSheet.findByIdAndUpdate(transitSheet._id, dataToSave, { new: true, runValidators: true });
+        transitSheet = await TransitSheet.findByIdAndUpdate(transitSheet._id, dataToSave, { new: true, runValidators: true, session });
     } else {
-        transitSheet = await TransitSheet.create(dataToSave);
+        transitSheet = (await TransitSheet.create([dataToSave], { session }))[0];
     }
 
     return transitSheet;
@@ -103,6 +110,7 @@ export const getTransitSheetData = async (teamId, campaignDay, pointId, actor, c
     });
     let transitSheet = await TransitSheet.findOne({ campaign: campaign._id, team: teamId, campaignDay, point: point._id });
     if (transitSheet) return transitSheet;
+    await assertEnabledFieldDay({ assignment: point, campaignDay, actor });
 
     if (point) {
         const area = await Area.findById(point.area);
@@ -167,6 +175,7 @@ export const finalizeTransitSheet = async (teamId, campaignDay, actor, campaignI
         session,
         requireAssignmentId: actor.role === "FieldTeam"
     });
+    await assertEnabledFieldDay({ assignment, campaignDay, actor, session, write: true });
     if (String(transitSheet.point) !== String(assignment._id) || String(transitSheet.campaign) !== String(campaign._id)) {
         throw new ApiError(409, "The selected assignment does not match this Transit Sheet.");
     }

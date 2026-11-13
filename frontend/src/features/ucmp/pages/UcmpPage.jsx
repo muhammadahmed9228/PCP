@@ -81,7 +81,7 @@ const UcmpPage = () => {
               <option key={camp._id} value={camp._id}>{camp.campaignName}</option>
             ))}
           </select>
-          <ExportExcelButton collectionName="ucmp" data={ucmpData} disabled={!ucmpData} />
+          <ExportExcelButton collectionName="ucmp" campaignId={selectedCampaignId} disabled={!ucmpData || loading} />
         </div>
       </div>
 

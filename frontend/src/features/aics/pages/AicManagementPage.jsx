@@ -10,7 +10,12 @@ import { fetchCampaigns } from "../../campaigns/store/campaignSlice";
 import { registerAicSchema, updateAicSchema } from "../validations/aic.schema";
 import Modal from "../../../components/shared/Modal";
 import { useTranslation } from "react-i18next";
+import { toast } from "react-toastify";
 import "../../../i18n/i18n";
+import { imageService } from "../../../services/image.service";
+import ImageUploader from "../../../components/shared/ImageUploader";
+import { prepareImage } from "../../../utils/imageUpload";
+import ProfileAvatar from "../../../components/shared/ProfileAvatar";
 
 const AicManagementPage = () => {
   const dispatch = useDispatch();
@@ -25,6 +30,7 @@ const AicManagementPage = () => {
   const [selectedAic, setSelectedAic] = useState(null);
   const [viewingAic, setViewingAic] = useState(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [registerProfileImage, setRegisterProfileImage] = useState(null);
 
   // Register Form
   const {
@@ -57,13 +63,30 @@ const AicManagementPage = () => {
   );
 
   const onRegisterSubmit = async (data) => {
-    const payload = { ...data, isGovtEmployee: data.isGovtEmployee === "true" };
+    const payload = {
+      ...data,
+      isGovtEmployee: data.isGovtEmployee === "true",
+      ...(registerProfileImage ? { profileImage: registerProfileImage.data, profileImageFileName: registerProfileImage.fileName } : {})
+    };
     const resultAction = await dispatch(registerNewAIC(payload));
     if (registerNewAIC.fulfilled.match(resultAction)) {
       setIsRegisterModalOpen(false);
       resetNew();
+      setRegisterProfileImage(null);
       setQuery(current => ({ ...current, page: 1 }));
       refresh();
+    }
+  };
+
+  const selectRegisterProfileImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    try {
+      setRegisterProfileImage({ data: await prepareImage(file), fileName: file.name });
+    } catch (error) {
+      toast.error(error.message || "Unable to prepare the profile image");
     }
   };
 
@@ -162,7 +185,7 @@ const AicManagementPage = () => {
           </p>
         </div>
         <button
-          onClick={() => setIsRegisterModalOpen(true)}
+          onClick={() => { setRegisterProfileImage(null); setIsRegisterModalOpen(true); }}
           className="bg-blue-600 text-white px-4 py-2.5 rounded-md shadow hover:bg-blue-700 font-medium text-sm flex items-center gap-2 transition"
         >
           <span className="text-lg leading-none">+</span> {t("registerNewAic")}
@@ -199,7 +222,7 @@ const AicManagementPage = () => {
                   const assignedCampaign = getAssignedCampaign(aic);
                   return <tr key={aic._id} className="hover:bg-gray-50/60 transition">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{aic.aicNo}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{aic.aicName}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900"><div className="flex items-center gap-3"><ProfileAvatar image={aic.profileImage} name={aic.aicName} className="h-9 w-9 text-xs text-slate-700" /><span className="whitespace-nowrap">{aic.aicName}</span></div></td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{aic.username}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{aic.phoneNumber}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-xs">
@@ -262,6 +285,7 @@ const AicManagementPage = () => {
       <Modal isOpen={!!viewingAic} onClose={() => setViewingAic(null)} title={`View AIC: ${viewingAic?.aicName || ""}`}>
         {viewingAic && (
           <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-3"><ProfileAvatar image={viewingAic.profileImage} name={viewingAic.aicName} className="h-16 w-16 text-lg text-slate-700" /><div><p className="font-semibold text-gray-900">{viewingAic.aicName}</p><p className="text-xs text-gray-500">AIC profile image</p></div></div>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><dt className="text-xs font-semibold uppercase text-gray-500">AIC Number</dt><dd className="mt-1 text-gray-900">{viewingAic.aicNo || "—"}</dd></div>
               <div><dt className="text-xs font-semibold uppercase text-gray-500">Name</dt><dd className="mt-1 text-gray-900">{viewingAic.aicName || "—"}</dd></div>
@@ -282,9 +306,9 @@ const AicManagementPage = () => {
       </Modal>
 
       {/* Register AIC Modal */}
-      <Modal isOpen={isRegisterModalOpen} onClose={() => setIsRegisterModalOpen(false)} title="Register New AIC">
+      <Modal isOpen={isRegisterModalOpen} onClose={() => { setRegisterProfileImage(null); setIsRegisterModalOpen(false); }} title="Register New AIC">
         <form onSubmit={handleSubmitNew(onRegisterSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">AIC Number</label>
               <input type="text" {...registerNew("aicNo")} placeholder="e.g. AIC-01" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -296,7 +320,7 @@ const AicManagementPage = () => {
               {errorsNew.aicName && <p className="text-sm text-red-600 mt-1">{errorsNew.aicName.message}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">CNIC (Username)</label>
               <input type="text" {...registerNew("username")} placeholder="13 digits without dashes" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -313,7 +337,7 @@ const AicManagementPage = () => {
             <input type="text" {...registerNew("phoneNumber")} placeholder="03001234567" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
             {errorsNew.phoneNumber && <p className="text-sm text-red-600 mt-1">{errorsNew.phoneNumber.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">Gender</label>
               <select {...registerNew("gender")} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white">
@@ -333,8 +357,13 @@ const AicManagementPage = () => {
               {errorsNew.isGovtEmployee && <p className="text-sm text-red-600 mt-1">{errorsNew.isGovtEmployee.message}</p>}
             </div>
           </div>
-          <div className="pt-4 flex justify-end gap-3">
-            <button type="button" onClick={() => setIsRegisterModalOpen(false)} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-sm">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">AIC Profile Image <span className="font-normal text-gray-500">(Optional)</span></label>
+            <input type="file" accept="image/*" onChange={selectRegisterProfileImage} className="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700" />
+            {registerProfileImage && <div className="mt-3 flex items-center gap-3"><img src={registerProfileImage.data} alt="Selected AIC profile" className="h-14 w-14 rounded-full object-cover" /><button type="button" onClick={() => setRegisterProfileImage(null)} className="text-sm font-medium text-red-600 hover:text-red-700">Remove image</button></div>}
+          </div>
+          <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-3 border-t border-gray-100 bg-white px-4 pb-1 pt-4 sm:-mx-6 sm:px-6">
+            <button type="button" onClick={() => { setRegisterProfileImage(null); setIsRegisterModalOpen(false); }} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-sm">
               Cancel
             </button>
             <button type="submit" className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 font-medium text-sm">
@@ -347,7 +376,8 @@ const AicManagementPage = () => {
       {/* Edit AIC Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit AIC: ${selectedAic?.aicName || ""}`}>
         <form onSubmit={handleSubmitEdit(onEditSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          {selectedAic && <ImageUploader label="AIC Profile Image" currentImage={selectedAic.profileImage} uploadImage={(image, fileName) => imageService.uploadAicProfileImage(selectedAic._id, image, fileName)} onUploaded={(image) => { setSelectedAic((current) => ({ ...current, profileImage: image })); refresh(); }} />}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">AIC Number</label>
               <input type="text" {...registerEdit("aicNo")} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
@@ -359,7 +389,7 @@ const AicManagementPage = () => {
               {errorsEdit.aicName && <p className="text-sm text-red-600 mt-1">{errorsEdit.aicName.message}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">CNIC (Read-only)</label>
               <input type="text" value={selectedAic?.username || ""} disabled className="mt-1 block w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 rounded-md font-mono" />
@@ -375,7 +405,7 @@ const AicManagementPage = () => {
             <input type="text" {...registerEdit("phoneNumber")} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
             {errorsEdit.phoneNumber && <p className="text-sm text-red-600 mt-1">{errorsEdit.phoneNumber.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">Gender</label>
               <select {...registerEdit("gender")} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white">
@@ -393,7 +423,7 @@ const AicManagementPage = () => {
               {errorsEdit.isGovtEmployee && <p className="text-sm text-red-600 mt-1">{errorsEdit.isGovtEmployee.message}</p>}
             </div>
           </div>
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-3 border-t border-gray-100 bg-white px-4 pb-1 pt-4 sm:-mx-6 sm:px-6">
             <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-sm">
               Cancel
             </button>

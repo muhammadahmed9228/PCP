@@ -5,6 +5,8 @@ import en from "./locales/en/translation.json";
 import ur from "./locales/ur/translation.json";
 import aicEn from "./locales/en/aic.json";
 import aicUr from "./locales/ur/aic.json";
+import fieldDayEn from "./locales/en/fieldDay.json";
+import fieldDayUr from "./locales/ur/fieldDay.json";
 
 const URDU_FONT_ID = "aic-noto-naskh-arabic";
 
@@ -32,8 +34,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: { ...en, ...aicEn } },
-      ur: { translation: { ...ur, ...aicUr } },
+      en: { translation: { ...en, ...aicEn, ...fieldDayEn } },
+      ur: { translation: { ...ur, ...aicUr, ...fieldDayUr } },
     },
     fallbackLng: "en",
     supportedLngs: ["en", "ur"],

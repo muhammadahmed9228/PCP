@@ -35,8 +35,14 @@ const LoginPage = () => {
   };
 
   return (
+    
+
+    
     <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
+        {/* for fast manual testing */}
+        <p>UCI: 3740637899183</p>
+        <p>AIC: 0987656543422 , 5678456434567</p>
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
           Polio Campaign Monitoring System
         </h2>
@@ -105,12 +111,14 @@ const LoginPage = () => {
           </button>
         </form>
         
-        <div className="mt-4 text-center text-sm text-gray-600">
+        <div className="mt-4 mb-6 text-center text-sm text-gray-600">
           Don't have an account?{" "}
           <Link to="/register" className="text-blue-600 hover:text-blue-500">
             Register as UCI
           </Link>
+         
         </div>
+         <a href="/team/login" className="w-full bg-blue-400 text-white py-2 rounded-md font-medium shadow m-6 p-6 hover:bg-blue-700">Field teams Login</a>
       </div>
     </div>
   );

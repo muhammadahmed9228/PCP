@@ -5,6 +5,7 @@ import { Campaign } from "../campaigns/campaign.model.js";
 import { Team } from "../teams/team.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { getFieldTeamAssignments } from "../shared/fieldTeamAssignments.js";
+import { getTeamDayState } from "../fieldDay/fieldDay.state.js";
 
 export const getOperationalContext = asyncHandler(async (req, res) => {
     const { _id, role } = req.user;
@@ -79,6 +80,8 @@ export const getOperationalContext = asyncHandler(async (req, res) => {
                 teamId: team._id,
                 teamNo: team.teamNo,
                 teamType: team.teamType, // "Mobile" | "Fixed" | "Transit"
+                enabledDay: getTeamDayState(area, team._id, team.teamType).enabledDay,
+                dayRevision: area.fieldDay?.revision || 0,
                 aicId: team.registeredBy,
                 areaId: area._id,
                 areaName: area.areaName,
@@ -86,7 +89,8 @@ export const getOperationalContext = asyncHandler(async (req, res) => {
                 areaImage: area.areaImage || null,
                 uciId: area.uci,
                 campaign: area.campaign,
-                assignments: (await getFieldTeamAssignments(team._id)).assignments
+                assignments: (await getFieldTeamAssignments(team._id)).assignments.filter(assignment =>
+                    String(assignment.areaId) === String(area._id) && String(assignment.campaignId) === String(area.campaign._id))
             }, "Field Team operational context resolved")
         );
     }

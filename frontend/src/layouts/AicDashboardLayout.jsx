@@ -8,6 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import TeamManagementPage from "../features/teams/pages/TeamManagementPage";
+import ManageFieldDayPage from "../features/fieldDay/ManageFieldDayPage";
 import GeographyManagementPage from "../features/geography/pages/GeographyManagementPage";
 import AmpPage from "../features/amp/pages/AmpPage";
 import OmpPage from "../features/omp/pages/OmpPage";
@@ -42,17 +43,18 @@ const AicDashboardLayout = () => {
     { key: "geography", path: "/dashboard/aic/geography" },
     { key: "areaMicroPlan", path: "/dashboard/aic/amp" },
     { key: "operationalMicroPlan", path: "/dashboard/aic/omp" },
+    { key: "manageFieldDay", path: "/dashboard/aic/field-days" },
     { key: "form2a", path: "/dashboard/aic/form2a" },
     { key: "My Profile", path: "/dashboard/aic/profile" },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-      <div className="w-full bg-emerald-700 text-white shadow-md md:min-h-screen md:w-64 flex flex-col">
-        <div className="border-b border-emerald-600 p-6">
+    <div className="portal-theme portal-aic min-h-screen bg-slate-100 flex flex-col md:flex-row">
+      <div className="w-full bg-[#173F70] text-white shadow-md md:min-h-screen md:w-64 flex flex-col">
+        <div className="border-b border-white/20 p-6">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-bold text-white">{t("aicPortal")}</h1>
-            <LangToggle variant="sidebar" />
+            <LangToggle variant="sidebar-navy" />
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
@@ -61,8 +63,8 @@ const AicDashboardLayout = () => {
               key={item.key}
               to={item.path}
               className={`block rounded-md px-4 py-2 ${location.pathname === item.path
-                  ? "bg-emerald-500 text-white font-medium"
-                  : "text-emerald-50 hover:bg-emerald-600"
+                  ? "bg-white/20 text-white font-semibold ring-1 ring-inset ring-white/20"
+                  : "text-white/90 hover:bg-black/15 hover:text-white"
                 }`}
             >
               {t(item.key)}
@@ -71,8 +73,9 @@ const AicDashboardLayout = () => {
         </nav>
 
       </div>
-      <main id="aic-dashboard-content" className="min-w-0 flex-1 overflow-y-auto"><DashboardHeader accent="green" onLogout={handleLogout} showLanguageToggle={false} /><div className="p-4 md:p-8">
+      <main id="aic-dashboard-content" className="min-w-0 flex-1 overflow-y-auto"><DashboardHeader accent="navy" onLogout={handleLogout} showLanguageToggle={false} /><div className="p-4 md:p-8">
         <Routes>
+          <Route path="/field-days" element={<ManageFieldDayPage />} />
           <Route path="/teams" element={<TeamManagementPage />} />
           <Route path="/geography" element={<GeographyManagementPage />} />
           <Route path="/amp" element={<AmpPage />} />

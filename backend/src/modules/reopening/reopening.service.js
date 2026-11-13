@@ -6,6 +6,7 @@ import { refreshDraftForm2B } from "../form2b/form2b.service.js";
 import { withMongoTransaction } from "../../utils/mongoTransaction.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { validateReopenReason } from "../../utils/reopenReason.js";
+import { assertEnabledFieldDay } from "../fieldDay/fieldDay.guard.js";
 
 const withSession = (query, session) => (session ? query.session(session) : query);
 
@@ -29,6 +30,7 @@ export const reopenFieldSheet = async ({
         if (sheet.status !== "Finalized") {
             throw new ApiError(409, `${label} is not finalized and cannot be reopened.`);
         }
+        await assertEnabledFieldDay({ assignment: sheet, campaignDay, actor: { role: "AIC", _id: aicId }, session, write: true });
 
         const campaign = await withSession(Campaign.findById(sheet.campaign), session);
         if (!campaign) throw new ApiError(404, "Campaign not found.");

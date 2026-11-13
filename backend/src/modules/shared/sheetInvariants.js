@@ -33,8 +33,14 @@ export const validateLogisticsConservation = (logistics, label = "Sheet") => {
     const markerReceived = asNumber(markers.received, `${label} markers received`);
     const markerUsed = asNumber(markers.used, `${label} markers used`);
     const markerReturned = asNumber(markers.returned, `${label} markers returned`);
-    if (markerReceived !== markerUsed + markerReturned) {
-        throw new ApiError(400, `${label}: markers received must equal used plus returned.`);
+    // Finger markers are reusable equipment, unlike vaccine doses and capsules.
+    // "Used" records how many of the issued markers were used during the shift;
+    // every issued marker must still be returned at the end of the shift.
+    if (markerUsed > markerReceived) {
+        throw new ApiError(400, `${label}: markers used cannot exceed markers received.`);
+    }
+    if (markerReturned !== markerReceived) {
+        throw new ApiError(400, `${label}: markers returned must equal markers received.`);
     }
 };
 

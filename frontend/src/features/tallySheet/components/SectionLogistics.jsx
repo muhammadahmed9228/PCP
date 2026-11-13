@@ -57,6 +57,7 @@ const SectionLogistics = () => {
         {/* Finger Markers */}
         <div className="bg-gray-50 p-4 border rounded">
           <h4 className="font-medium text-gray-800 mb-3">{t("fingerMarkers")}</h4>
+          <p className="mb-3 text-xs leading-5 text-gray-500">{t("markersReusableNote")}</p>
           <div className="space-y-2 text-sm">
             <div><label>{t("received")}</label><input type="number" {...register("logistics.markers.received")} className="w-full px-2 py-1 border" /></div>
             <div><label>{t("used")}</label><input type="number" {...register("logistics.markers.used")} className="w-full px-2 py-1 border" /></div>

@@ -64,12 +64,18 @@ const fixedSheetSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchFixedSheet.pending, (state) => { state.loading = true; })
+      .addCase(fetchFixedSheet.pending, (state, action) => {
+        state.loading = true;
+        state.requestId = action.meta.requestId;
+        state.data = null;
+      })
       .addCase(fetchFixedSheet.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchFixedSheet.rejected, (state) => {
+      .addCase(fetchFixedSheet.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.loading = false;
         state.data = null;
       })

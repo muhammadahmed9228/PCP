@@ -5,10 +5,11 @@ import { AIC } from "../users/aic.model.js";
 import { Campaign } from "../campaigns/campaign.model.js";
 import { Area } from "../areas/area.model.js";
 import { escapeListSearch, isPagedList, parseListQuery } from "../../utils/listQuery.js";
+import { deleteImageAsset, uploadToImageKit } from "../images/image.controller.js";
 
 // Step 3 - Register new AIC[cite: 1]
 export const registerAIC = asyncHandler(async (req, res) => {
-    const { aicNo, aicName, username, password, phoneNumber, gender, isGovtEmployee } = req.body;
+    const { aicNo, aicName, username, password, phoneNumber, gender, isGovtEmployee, profileImage, profileImageFileName } = req.body;
 
     if (
         [aicNo, aicName, username, password, phoneNumber, gender].some((field) => field?.trim() === "") ||
@@ -22,16 +23,27 @@ export const registerAIC = asyncHandler(async (req, res) => {
         throw new ApiError(409, "AIC with this CNIC already exists");
     }
 
-    const aic = await AIC.create({
-        aicNo,
-        aicName,
-        username,
-        password,
-        phoneNumber,
-        gender,
-        isGovtEmployee,
-        registeredBy: req.user._id // The currently logged-in UCI[cite: 1]
-    });
+    const profileImageAsset = profileImage
+        ? await uploadToImageKit(profileImage, profileImageFileName, "/pcp/aics/profile")
+        : undefined;
+
+    let aic;
+    try {
+        aic = await AIC.create({
+            aicNo,
+            aicName,
+            username,
+            password,
+            phoneNumber,
+            gender,
+            isGovtEmployee,
+            profileImage: profileImageAsset,
+            registeredBy: req.user._id // The currently logged-in UCI[cite: 1]
+        });
+    } catch (error) {
+        if (profileImageAsset?.fileId) await deleteImageAsset(profileImageAsset.fileId).catch(() => {});
+        throw error;
+    }
 
     const createdAIC = await AIC.findById(aic._id).select("-password -refreshToken");
 
@@ -153,6 +165,7 @@ export const deleteAIC = asyncHandler(async (req, res) => {
     await Campaign.updateMany({ aics: id }, { $pull: { aics: id } });
 
     await AIC.findByIdAndDelete(id);
+    if (aic.profileImage?.fileId) await deleteImageAsset(aic.profileImage.fileId).catch(() => {});
 
     return res.status(200).json(new ApiResponse(200, { deletedId: id }, "AIC deleted successfully"));
 });

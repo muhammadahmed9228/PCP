@@ -10,6 +10,8 @@ import SectionLogistics from "../../tallySheet/components/SectionLogistics";
 import { useTranslation } from "react-i18next";
 import "../../../i18n/i18n";
 import ExportExcelButton from "../../../components/shared/ExportExcelButton";
+import { useFieldDayAssignment } from "../../fieldDay/useFieldDayAssignment";
+import FieldDayNotice from "../../fieldDay/FieldDayNotice";
 import AssignedGeographyImage from "../../geography/components/AssignedGeographyImage";
 
 const TransitSheetPage = () => {
@@ -23,16 +25,15 @@ const TransitSheetPage = () => {
   const { user } = useSelector(state => state.auth);
   const isFieldTeam = user?.role === "FieldTeam";
   const isAic = user?.role === "AIC";
+  const dayControl = useFieldDayAssignment("Transit");
+  const selectedAssignment = dayControl.selectedAssignment;
 
   const [selectedTeamId, setSelectedTeamId] = useState(isFieldTeam ? user._id : "");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedPointId, setSelectedPointId] = useState("");
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [activeTab, setActiveTab] = useState(0);
 
   const activeAreaId = context?.areaId;
-  const fieldAssignments = (context.assignments || []).filter((assignment) => assignment.teamType === "Transit" && assignment.assignmentType === "Point");
-  const selectedAssignment = fieldAssignments.find((assignment) => String(assignment.assignmentId) === String(selectedAssignmentId));
   const operationalDay = isFieldTeam ? selectedAssignment?.campaignDay?.toString() || "" : selectedDay;
   const operationalPointId = isFieldTeam ? selectedAssignment?.assignmentId : selectedPointId;
   const operationalCampaignId = isFieldTeam ? selectedAssignment?.campaignId : context?.campaign?._id;
@@ -84,6 +85,7 @@ const TransitSheetPage = () => {
   }, [sheetData, methods]);
 
   const isFinalized = sheetData?.status === "Finalized";
+    const sheetReady = !isFieldTeam || (sheetData && String(sheetData.point) === String(operationalPointId) && Number(sheetData.campaignDay) === Number(operationalDay) && String(sheetData.campaign) === String(operationalCampaignId));
 
   // Filter transit points for this team & day if available, otherwise show all transit points
   const teamPoints = transitPoints.filter(
@@ -94,6 +96,7 @@ const TransitSheetPage = () => {
   const displayedPoints = teamPoints.length > 0 ? teamPoints : transitPoints;
 
   const handleSaveDraft = async (data) => {
+    if (dayControl.readOnly || !sheetReady || loading) return;
     if (!selectedTeamId || !operationalDay || !operationalPointId) {
       alert(t("selectTransitPointBeforeSaving"));
       return;
@@ -103,6 +106,7 @@ const TransitSheetPage = () => {
   };
 
   const handleFinalize = async () => {
+    if (dayControl.readOnly || !sheetReady || loading) return;
     if (window.confirm(t("finalizeTransitSheetConfirm"))) {
       await dispatch(finalizeTransitSheet({ teamId: selectedTeamId, day: operationalDay, campaignId: operationalCampaignId, pointId: operationalPointId }));
     }
@@ -140,10 +144,7 @@ const TransitSheetPage = () => {
             </select>
           </div>
         )}
-        {isFieldTeam ? <div className="md:col-span-2 space-y-2">
-          {fieldAssignments.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">No active transit point has been assigned to this team yet.</p>}
-          {fieldAssignments.map((assignment) => { const isSelected = String(assignment.assignmentId) === String(selectedAssignmentId); return <button key={assignment.assignmentId} type="button" onClick={() => setSelectedAssignmentId(assignment.assignmentId)} className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-300"}`}><span className="flex items-center justify-between gap-3"><span className="font-semibold text-slate-900">Day {assignment.campaignDay} · {assignment.label}</span><span className="text-xs font-semibold text-slate-500">{assignment.sheetStatus}</span></span><span className="mt-1 block text-xs text-slate-500">{assignment.areaName || "Assigned area"}</span></button>; })}
-        </div> : <div>
+        {isFieldTeam ? <div className="md:col-span-2"><FieldDayNotice control={dayControl} dirty={methods.formState.isDirty} /></div> : <div>
           <label className="block text-sm font-medium">{t("campaignDay")}</label>
           <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)} className="mt-1 w-full px-3 py-2 border rounded">
             <option value="">{t("dayPlaceholder")}</option>
@@ -154,7 +155,7 @@ const TransitSheetPage = () => {
         </div>}
         {!isFieldTeam && <div>
           <label className="block text-sm font-medium">{t("transitPoint")}</label>
-          <select value={selectedPointId} onChange={e => setSelectedPointId(e.target.value)} disabled={isFinalized} className="mt-1 w-full px-3 py-2 border rounded disabled:bg-gray-100">
+          <select value={selectedPointId} onChange={e => setSelectedPointId(e.target.value)} disabled={isFinalized || dayControl.readOnly || !sheetReady || loading} className="mt-1 w-full px-3 py-2 border rounded disabled:bg-gray-100">
             <option value="">{t("selectPoint")}</option>
             {displayedPoints.map(p => <option key={p._id} value={p._id}>{p.pointNo} - {p.pointName} (Day {p.campaignDay})</option>)}
           </select>
@@ -163,7 +164,7 @@ const TransitSheetPage = () => {
 
       {!selectedTeamId || !operationalDay ? (
         <div className="bg-white p-8 text-center rounded border shadow text-gray-500">
-          {t("selectTransitTeamDayHint")}
+          {t(isFieldTeam ? "fieldDayWaitingHint" : "selectTransitTeamDayHint")}
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg flex flex-col">
@@ -182,7 +183,7 @@ const TransitSheetPage = () => {
               </div>
 
               <div className="p-6">
-                <fieldset disabled={isFinalized}>
+                <fieldset disabled={isFinalized || dayControl.readOnly || !sheetReady || loading}>
                   {activeTab === 0 && <><TransitSheetSnapshot snapshot={sheetData?.snapshot} day={operationalDay} /><AssignedGeographyImage kind="point" day={operationalDay} assignmentId={isFieldTeam ? operationalPointId : undefined} assignmentImage={isFieldTeam ? selectedAssignment?.image : undefined} /></>}
                   {activeTab === 1 && <TransitTallyUI isFinalized={isFinalized} />}
                   {activeTab === 2 && <SectionLogistics />}
@@ -191,10 +192,10 @@ const TransitSheetPage = () => {
 
               <div className="p-6 bg-gray-50 border-t flex justify-end gap-4">
                 {isAic && isFinalized && <button type="button" onClick={handleReopen} disabled={loading} className="px-6 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50">Reopen for correction</button>}
-                <button type="submit" disabled={isFinalized || loading || !selectedPointId} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                <button type="submit" disabled={isFinalized || dayControl.readOnly || !sheetReady || loading || !operationalPointId} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
                   {loading ? t("saving") : t("saveDraft")}
                 </button>
-                <button type="button" onClick={handleFinalize} disabled={isFinalized || !sheetData?._id} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+                <button type="button" onClick={handleFinalize} disabled={isFinalized || dayControl.readOnly || !sheetReady || loading || !sheetData?._id} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
                   {t("validateFinalize")}
                 </button>
               </div>

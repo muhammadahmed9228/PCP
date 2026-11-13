@@ -20,7 +20,7 @@ const ScrollToTopButton = ({ targetId }) => {
   }, [getScrollTarget, targetId]);
 
   const scrollToTop = () => getScrollTarget()?.scrollTo({ top: 0, behavior: "smooth" });
-  return <button type="button" onClick={scrollToTop} aria-label="Scroll to top" title="Scroll to top" className={`fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white shadow-lg ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-blue-700 ${visible ? "opacity-100" : "opacity-60"}`}>Top</button>;
+  return <button type="button" onClick={scrollToTop} aria-label="Scroll to top" title="Scroll to top" className={`portal-scroll-top fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white shadow-lg ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-blue-700 ${visible ? "opacity-100" : "opacity-60"}`}>Top</button>;
 };
 
 export default ScrollToTopButton;

@@ -8,10 +8,10 @@ const LangToggle = ({ variant = "default" }) => {
     i18n.changeLanguage(isUrdu ? "en" : "ur");
   };
 
-  const className = variant === "sidebar"
-    ? "rounded-lg border border-emerald-300/50 bg-emerald-800/70 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:border-white/70 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-white/80 focus:ring-offset-2 focus:ring-offset-emerald-700"
-    : variant === "sidebar-blue"
-      ? "rounded-lg border border-blue-300/50 bg-blue-800/70 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:border-white/70 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-white/80 focus:ring-offset-2 focus:ring-offset-blue-700"
+  const className = variant === "sidebar-navy"
+    ? "rounded-lg border border-white/30 bg-black/20 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:border-white/70 hover:bg-black/30 focus:outline-none focus:ring-2 focus:ring-white/80 focus:ring-offset-2 focus:ring-offset-[#173F70]"
+    : variant === "sidebar-teal"
+      ? "rounded-lg border border-white/30 bg-black/15 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:border-white/70 hover:bg-black/25 focus:outline-none focus:ring-2 focus:ring-white/80 focus:ring-offset-2 focus:ring-offset-[#008C95]"
     : "rounded bg-blue-600 border border-gray-200 px-3 py-1 text-sm font-medium text-white transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white/80";
 
   return (

@@ -21,7 +21,10 @@ const TeamLoginPage = () => {
     <div className="flex items-center justify-center min-h-screen bg-blue-50 px-4">
       <div className="w-full max-w-sm bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-xl font-bold text-center text-blue-900 mb-6">Field Worker Login</h2>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <p>M: 34567898765 , 1122334455667</p>
+        <p>F: 3740637899185</p>
+        <p>T: 3740637899186</p>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700">CNIC (Username)</label>
             <input type="text" {...register("username")} className="mt-1 block w-full px-3 py-2 border rounded-md" required />
@@ -34,8 +37,11 @@ const TeamLoginPage = () => {
             {loading ? "Signing in..." : "Start Shift"}
           </button>
         </form>
-        <a href="/field-work" className="block text-center text-blue-700 underline mt-4">Open downloaded field sheets / محفوظ شدہ فیلڈ شیٹس</a>
+        
+        <a href="/login" className="w-full bg-blue-400 text-white py-2 rounded-md font-medium shadow m-6 p-6 hover:bg-blue-700">UCI/ AIC Login</a>
       </div>
+      
+
     </div>
   );
 };

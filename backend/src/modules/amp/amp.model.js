@@ -77,6 +77,7 @@ const ampSchema = new mongoose.Schema(
         mobileFemaleMember: { type: Number },
         mobileLocalPerson: { type: Number },
         bothAdults: { type: Boolean },
+        migrantMobileChildren: { type: Number, min: 0, validate: value => value == null || Number.isSafeInteger(value) },
 
         // Section 10: Vials
         vaccineVial: { type: Number },

@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerUciSchema } from "../validations/auth.schema";
 import { authService } from "../services/auth.service";
+import { prepareImage } from "../../../utils/imageUpload";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
 
   const {
     register,
@@ -25,7 +27,11 @@ const RegisterPage = () => {
     try {
       setLoading(true);
       // Ensure boolean conversion for the select input
-      const payload = { ...data, isGovtEmployee: data.isGovtEmployee === "true" };
+      const payload = {
+        ...data,
+        isGovtEmployee: data.isGovtEmployee === "true",
+        ...(profileImage ? { profileImage: profileImage.data, profileImageFileName: profileImage.fileName } : {})
+      };
       await authService.registerUCI(payload);
       toast.success("UCI registered successfully. Please login.");
       navigate("/login");
@@ -33,6 +39,18 @@ const RegisterPage = () => {
       toast.error(error.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const selectProfileImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    try {
+      setProfileImage({ data: await prepareImage(file), fileName: file.name });
+    } catch (error) {
+      toast.error(error.message || "Unable to prepare the profile image");
     }
   };
 
@@ -124,6 +142,12 @@ const RegisterPage = () => {
                   </select>
                   {errors.isGovtEmployee && <p className="mt-1 text-sm text-red-600">{errors.isGovtEmployee.message}</p>}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Profile Image <span className="font-normal text-gray-500">(Optional)</span></label>
+                <input type="file" accept="image/*" onChange={selectProfileImage} className="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700" />
+                {profileImage && <div className="mt-3 flex items-center gap-3"><img src={profileImage.data} alt="Selected profile" className="h-14 w-14 rounded-full object-cover" /><button type="button" onClick={() => setProfileImage(null)} className="text-sm font-medium text-red-600 hover:text-red-700">Remove image</button></div>}
               </div>
             </div>
 

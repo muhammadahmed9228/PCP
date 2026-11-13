@@ -66,14 +66,18 @@ const transitSheetSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchTransitSheet.pending, (state) => { 
-        state.loading = true; 
+      .addCase(fetchTransitSheet.pending, (state, action) => {
+        state.loading = true;
+        state.requestId = action.meta.requestId;
+        state.data = null;
       })
       .addCase(fetchTransitSheet.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchTransitSheet.rejected, (state) => {
+      .addCase(fetchTransitSheet.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.loading = false;
         state.data = null;
       })

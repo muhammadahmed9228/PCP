@@ -24,6 +24,7 @@ const uciSchema = new mongoose.Schema(
     province: { type: String, required: true, trim: true },
     district: { type: String, required: true, trim: true },
     townTehsil: { type: String, required: true, trim: true },
+    profileImage: { type: imageAssetSchema },
     ucImage: { type: imageAssetSchema },
     role: { type: String, default: "UCI", immutable: true }, // Foundation for RBAC[cite: 1]
     refreshToken: { type: String }

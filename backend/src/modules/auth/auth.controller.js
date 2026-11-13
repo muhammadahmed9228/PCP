@@ -5,6 +5,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { UCI } from "../users/uci.model.js";
 import { AIC } from "../users/aic.model.js";
 import { Team } from "../teams/team.model.js";
+import { deleteImageAsset, uploadToImageKit } from "../images/image.controller.js";
 import jwt from "jsonwebtoken";
 
 export const getCurrentUser = asyncHandler(async (req, res) => {
@@ -27,7 +28,7 @@ export const registerUCI = asyncHandler(async (req, res) => {
   const {
     uciNo, uciName, username, password, phoneNumber, 
     gender, isGovtEmployee, ucNumber, ucName, 
-    province, district, townTehsil
+    province, district, townTehsil, profileImage, profileImageFileName
   } = req.body;
 
   // Basic validation - can be expanded with Zod middleware if preferred
@@ -45,11 +46,21 @@ export const registerUCI = asyncHandler(async (req, res) => {
     throw new ApiError(409, "UCI with this CNIC already exists");
   }
 
-  const uci = await UCI.create({
-    uciNo, uciName, username, password, phoneNumber, 
-    gender, isGovtEmployee, ucNumber, ucName, 
-    province, district, townTehsil
-  });
+  const profileImageAsset = profileImage
+    ? await uploadToImageKit(profileImage, profileImageFileName, "/pcp/uci/profile")
+    : undefined;
+
+  let uci;
+  try {
+    uci = await UCI.create({
+      uciNo, uciName, username, password, phoneNumber,
+      gender, isGovtEmployee, ucNumber, ucName,
+      province, district, townTehsil, profileImage: profileImageAsset
+    });
+  } catch (error) {
+    if (profileImageAsset?.fileId) await deleteImageAsset(profileImageAsset.fileId).catch(() => {});
+    throw error;
+  }
 
   const createdUCI = await UCI.findById(uci._id).select("-password -refreshToken");
 

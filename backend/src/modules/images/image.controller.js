@@ -3,11 +3,12 @@ import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { getImageKit } from "../../config/imageKit.js";
 import { UCI } from "../users/uci.model.js";
+import { AIC } from "../users/aic.model.js";
 import { Area } from "../areas/area.model.js";
 import { Route, Point } from "../geography/geography.model.js";
 import { Campaign } from "../campaigns/campaign.model.js";
 
-const uploadToImageKit = async (image, fileName, folder) => {
+export const uploadToImageKit = async (image, fileName, folder) => {
   if (typeof image !== "string" || !image.startsWith("data:image/")) {
     throw new ApiError(400, "A valid image file is required");
   }
@@ -37,6 +38,24 @@ const replaceImage = async (document, field, image, fileName, folder) => {
   if (previousFileId && previousFileId !== asset.fileId) getImageKit().deleteFile(previousFileId).catch(() => {});
   return asset;
 };
+
+export const deleteImageAsset = async (fileId) => {
+  if (fileId) await getImageKit().deleteFile(fileId);
+};
+
+export const uploadUciProfileImage = asyncHandler(async (req, res) => {
+  if (req.user.role !== "UCI") throw new ApiError(403, "Only UCI users can update their profile image");
+  const image = await replaceImage(req.user, "profileImage", req.body.image, req.body.fileName, `/pcp/uci/${req.user._id}/profile`);
+  return res.status(200).json(new ApiResponse(200, image, "Profile image uploaded successfully"));
+});
+
+export const uploadAicProfileImage = asyncHandler(async (req, res) => {
+  if (req.user.role !== "UCI") throw new ApiError(403, "Only the registering UCI can update an AIC profile image");
+  const aic = await AIC.findOne({ _id: req.params.aicId, registeredBy: req.user._id });
+  if (!aic) throw new ApiError(404, "AIC not found or unauthorized");
+  const image = await replaceImage(aic, "profileImage", req.body.image, req.body.fileName, `/pcp/aics/${aic._id}/profile`);
+  return res.status(200).json(new ApiResponse(200, image, "AIC profile image uploaded successfully"));
+});
 
 export const uploadUciImage = asyncHandler(async (req, res) => {
   if (req.user.role !== "UCI") throw new ApiError(403, "Only UCI users can upload a UC image");

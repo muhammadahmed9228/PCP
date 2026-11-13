@@ -3,14 +3,43 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import LangToggle from "../../i18n/LangToggle";
 import { useTranslation } from "react-i18next";
+import ProfileAvatar from "../shared/ProfileAvatar";
 
-const DashboardHeader = ({ accent = "blue", onLogout, showLanguageToggle = true }) => {
+const DashboardHeader = ({ accent = "teal", onLogout, showLanguageToggle = true }) => {
   const { user } = useSelector((state) => state.auth);
   const context = useSelector((state) => state.context);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const green = accent === "green";
+  const accentStyles = {
+    teal: {
+      header: "bg-[#008C95] text-white",
+      detail: "bg-black/15",
+      logout: "bg-black/15 hover:bg-black/25",
+      muted: "text-white/80",
+      border: "border-white/20",
+    },
+    navy: {
+      header: "bg-[#173F70] text-white",
+      detail: "bg-black/20",
+      logout: "bg-black/20 hover:bg-black/30",
+      muted: "text-white/75",
+      border: "border-white/20",
+    },
+    orange: {
+      header: "bg-[#E88724] text-slate-950",
+      detail: "bg-white/35",
+      logout: "bg-white/35 hover:bg-white/50",
+      muted: "text-slate-800",
+      border: "border-black/15",
+    },
+  }[accent] || {
+    header: "bg-[#008C95] text-white",
+    detail: "bg-black/15",
+    logout: "bg-black/15 hover:bg-black/25",
+    muted: "text-white/80",
+    border: "border-white/20",
+  };
   const profilePath = user?.role === "UCI" ? "/dashboard/uci/profile" : user?.role === "AIC" ? "/dashboard/aic/profile" : "/dashboard/team/profile";
   const campaign = context.campaign;
   const campaignName = campaign?.campaignName || t("noCurrentCampaign");
@@ -30,13 +59,16 @@ const DashboardHeader = ({ accent = "blue", onLogout, showLanguageToggle = true 
       : [[t("cnic"), user?.username], [t("campaign"), campaignName], [t("area"), `${context.areaName || t("notAssigned")}${context.areaNo ? ` / ${context.areaNo}` : ""}`], [t("teamType"), user?.teamType ? t(`teamType${user.teamType}`) : null]];
 
   return (
-    <header className={`${green ? "bg-emerald-700" : "bg-blue-700"} sticky top-0 z-50 text-white shadow-md`}>
+    <header className={`${accentStyles.header} sticky top-0 z-50 shadow-md`}>
       <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6">
         <div className="min-w-0 space-y-2">
-          <p className="text-xl font-bold leading-tight">{roleName}</p>
+          <div className="flex items-center gap-3">
+            {user?.role !== "FieldTeam" && <ProfileAvatar image={user?.profileImage} name={roleName} className="h-11 w-11" />}
+            <p className="text-xl font-bold leading-tight">{roleName}</p>
+          </div>
           <dl className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
             {headerFields.map(([label, value]) => (
-              <div key={label} className={`flex flex-wrap gap-1 rounded-md px-2 py-1 ${green ? "bg-emerald-800/70" : "bg-blue-800/70"}`}>
+              <div key={label} className={`flex flex-wrap gap-1 rounded-md px-2 py-1 ${accentStyles.detail}`}>
                 <dt className="font-semibold">{label}:</dt>
                 <dd className="break-all">{display(value)}</dd>
               </div>
@@ -44,15 +76,15 @@ const DashboardHeader = ({ accent = "blue", onLogout, showLanguageToggle = true 
           </dl>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => navigate(profilePath)} className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold hover:bg-white/10">{t("profile")}</button>
-          <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} aria-controls="dashboard-snapshot" className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold hover:bg-white/10">{expanded ? t("hideSnapshot") : t("viewSnapshot")}</button>
+          <button type="button" onClick={() => navigate(profilePath)} className={`rounded-lg border ${accentStyles.border} px-3 py-1.5 text-xs font-semibold hover:bg-white/15`}>{t("profile")}</button>
+          <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} aria-controls="dashboard-snapshot" className={`rounded-lg border ${accentStyles.border} px-3 py-1.5 text-xs font-semibold hover:bg-white/15`}>{expanded ? t("hideSnapshot") : t("viewSnapshot")}</button>
           {showLanguageToggle && <LangToggle />}
-          <button type="button" onClick={onLogout} className={`${green ? "bg-emerald-800 hover:bg-emerald-900" : "bg-blue-800 hover:bg-blue-900"} rounded-lg border border-white/20 px-3 py-1.5 text-sm font-semibold`}>{t("logout")}</button>
+          <button type="button" onClick={onLogout} className={`${accentStyles.logout} rounded-lg border ${accentStyles.border} px-3 py-1.5 text-sm font-semibold`}>{t("logout")}</button>
         </div>
       </div>
-      {expanded && <div id="dashboard-snapshot" className="border-t border-white/15 bg-black/10 px-4 py-4 md:px-6">
+      {expanded && <div id="dashboard-snapshot" className={`border-t ${accentStyles.border} bg-black/10 px-4 py-4 md:px-6`}>
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          {snapshot.map(([label, value]) => <div key={label} className="rounded-lg border border-white/20 bg-white/10 p-3"><p className={`text-xs ${green ? "text-emerald-100" : "text-blue-100"}`}>{label}</p><p className="mt-1 break-words font-semibold">{display(value)}</p></div>)}
+          {snapshot.map(([label, value]) => <div key={label} className={`rounded-lg border ${accentStyles.border} bg-white/15 p-3`}><p className={`text-xs ${accentStyles.muted}`}>{label}</p><p className="mt-1 break-words font-semibold">{display(value)}</p></div>)}
         </div>
       </div>}
     </header>

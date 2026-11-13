@@ -14,7 +14,7 @@ const editableFields = [
     "vaccineCarrierRequired", "vaccineCarrierAvailable", "vitaminARed", "vitaminABlue",
     "totalVaccineDoses", "totalTallysheets", "totalChalkBoxes", "markers", "plasticBags",
     "pens", "totalBadgeCards", "mobileGovtPerson", "mobileFemaleMember", "mobileLocalPerson",
-    "bothAdults", "vaccineVial", "dropper", "totalRefusalChildren", "totalMadrasas",
+    "bothAdults", "migrantMobileChildren", "vaccineVial", "dropper", "totalRefusalChildren", "totalMadrasas",
     "totalMosques", "totalHighSchools", "totalSchoolsMadrasasBelow5", "unvaccinatedLastCampaign",
     "unvaccinatedPastTwoCampaigns", "totalUnderDoseChildren", "protectedVaccinationsAfterLast"
 ];
@@ -64,10 +64,20 @@ export const saveAMPDraft = async (areaId, aicId, payload) => {
     if (campaign.status !== "Planning") throw new ApiError(403, "AMP can only be modified during Planning.");
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new ApiError(400, "Invalid AMP data.");
 
+    if (Object.hasOwn(payload, "migrantMobileChildren")) {
+        const value = payload.migrantMobileChildren;
+        if (value !== "" && value !== null && value !== undefined &&
+            ((typeof value !== "number" && (typeof value !== "string" || !/^\d+$/.test(value))) ||
+             !Number.isSafeInteger(Number(value)) || Number(value) < 0)) {
+            throw new ApiError(400, "Migrant and mobile children must be a non-negative whole number.");
+        }
+    }
+
     const [uci, aic] = await Promise.all([UCI.findById(area.uci), AIC.findById(aicId)]);
     if (!uci || !aic) throw new ApiError(404, "Assigned UCI or AIC not found.");
 
     const editable = Object.fromEntries(editableFields.filter(key => Object.hasOwn(payload, key)).map(key => [key, payload[key]]));
+    if (Object.hasOwn(editable, "migrantMobileChildren") && (editable.migrantMobileChildren === "" || editable.migrantMobileChildren === undefined)) editable.migrantMobileChildren = null;
     const values = { ...editable,
         sia: campaign.nameOfSIA, areaNo: area.areaNo, areaName: area.areaName,
         uciName: uci.uciName, uciNo: uci.uciNo, campaignName: campaign.campaignName,
